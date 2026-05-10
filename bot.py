@@ -9,7 +9,6 @@ import tempfile
 import qrcode
 from io import BytesIO
 
-# API Keys Render Environment থেকে নিবে
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 REMOVE_BG_KEY = os.getenv("REMOVE_BG_KEY")
@@ -22,7 +21,6 @@ if REPLICATE_TOKEN:
 
 user_state = {}
 
-# /start মেনু - Contact বাটন বাদ
 @bot.message_handler(commands=['start'])
 def start(message):
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -36,7 +34,6 @@ def start(message):
     markup.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7)
     bot.send_message(message.chat.id, "🔥 **All-in-One Super Bot** 🔥\n\nকি করতে চাও ভাই?", reply_markup=markup, parse_mode="Markdown")
 
-# বাটন হ্যান্ডলার
 @bot.callback_query_handler(func=lambda call: True)
 def callback_handler(call):
     chat_id = call.message.chat.id
@@ -62,14 +59,11 @@ def callback_handler(call):
         user_state[chat_id] = "qr"
         bot.send_message(chat_id, "🖼️ QR এর জন্য লেখা বা লিংক দাও:")
 
-# মেসেজ হ্যান্ডলার
 @bot.message_handler(content_types=['text', 'photo'])
 def handle_message(message):
     chat_id = message.chat.id
     state = user_state.get(chat_id)
-
     try:
-        # 1. YT Video Download
         if state == "yt_video" and message.text:
             msg = bot.send_message(chat_id, "⏳ ডাউনলোড হচ্ছে...")
             yt = YouTube(message.text)
@@ -79,8 +73,6 @@ def handle_message(message):
                 bot.send_video(chat_id, open(tmp.name, 'rb'), caption=f"✅ {yt.title}")
             os.remove(tmp.name)
             bot.delete_message(chat_id, msg.message_id)
-
-        # 2. MP3 Download
         elif state == "yt_audio" and message.text:
             msg = bot.send_message(chat_id, "⏳ MP3 বানাচ্ছি...")
             yt = YouTube(message.text) if "youtube.com" in message.text else YouTube(f"ytsearch:{message.text}").streams[0]
@@ -90,16 +82,42 @@ def handle_message(message):
                 bot.send_audio(chat_id, open(tmp.name, 'rb'), title=yt.title)
             os.remove(tmp.name)
             bot.delete_message(chat_id, msg.message_id)
-
-        # 3. AI Chat
         elif state == "ai_chat" and message.text:
             msg = bot.send_message(chat_id, "🤖 ভাবতেছি...")
             model = genai.GenerativeModel('gemini-1.5-flash')
             response = model.generate_content(f"তুমি বন্ধুর মতো কথা বলো। ইউজার: {message.text}")
             bot.edit_message_text(response.text, chat_id, msg.message_id)
-
-        # 4. ছন্দমালা
         elif state == "poem" and message.text:
             msg = bot.send_message(chat_id, "✍️ কবিতা লিখতেছি...")
             model = genai.GenerativeModel('gemini-1.5-flash')
             response = model.generate_content(f"তুমি একজন কবি। {message.text} এই বয়স অনুযায়ী সুন্দর ছন্দমালা/গীতিমালা লিখো। 4-6 লাইন।")
+            bot.edit_message_text(response.text, chat_id, msg.message_id)
+        elif state == "photo_edit" and message.content_type == 'photo':
+            file_info = bot.get_file(message.photo[-1].file_id)
+            img_data = bot.download_file(file_info.file_path)
+            msg = bot.send_message(chat_id, "⏳ Background Remove করতেছি...")
+            r = requests.post('https://api.remove.bg/v1.0/removebg', files={'image_file': img_data}, data={'size': 'auto'}, headers={'X-Api-Key': REMOVE_BG_KEY})
+            if r.status_code == 200:
+                bot.send_photo(chat_id, r.content, caption="✅ BG Remove Done")
+            else:
+                bot.send_message(chat_id, "❌ Error! API Key চেক করো")
+            bot.delete_message(chat_id, msg.message_id)
+        elif state == "photo_video" and message.content_type == 'photo':
+            file_info = bot.get_file(message.photo[-1].file_id)
+            img_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
+            msg = bot.send_message(chat_id, "🎥 ভিডিও বানাচ্ছি... 1 মিনিট লাগবে")
+            output = replicate.run("stability-ai/stable-video-diffusion:3f0457e4619daac51203dedfad6e7", input={"input_image": img_url, "video_length": "14_frames_with_svd", "fps": 6})
+            bot.send_video(chat_id, output, caption="✅ ছবি থেকে ভিডিও Done")
+            bot.delete_message(chat_id, msg.message_id)
+        elif state == "qr" and message.text:
+            img = qrcode.make(message.text)
+            bio = BytesIO()
+            bio.name = 'qr.jpeg'
+            img.save(bio, 'JPEG')
+            bio.seek(0)
+            bot.send_photo(chat_id, bio, caption="✅ QR Code Ready")
+        user_state[chat_id] = None
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Error: {str(e)}\nআবার /start দাও")
+
+bot.infinity_polling()
