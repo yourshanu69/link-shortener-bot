@@ -1,5 +1,5 @@
 pyTelegramBotAPI
-pytube
+yt-dlp
 google-genai
 replicate
 requests
