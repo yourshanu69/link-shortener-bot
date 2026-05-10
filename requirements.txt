@@ -1,7 +1,4 @@
 pyTelegramBotAPI
-yt-dlp
-google-genai
-replicate
-requests
-qrcode
 flask
+Pillow
+PyPDF2
