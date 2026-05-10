@@ -308,5 +308,16 @@ def keep_alive():
     t.start()
 
 keep_alive()   # <- এই লাইনটা নতুন
-bot.polling()  # <- এইটা আগে থেকেই ছিল, এটাই শেষ লাইন
+import time
+
+keep_alive()
+print("Bot started successfully!")
+
+while True:
+    try:
+        bot.polling(non_stop=True, interval=0, timeout=60, long_polling_timeout=60)
+    except Exception as e:
+        print(f"Bot crashed due to: {e}")
+        print("Restarting in 15 seconds...")
+        time.sleep(15)
 
