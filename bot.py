@@ -1,5 +1,7 @@
 import os
 import telebot
+from flask import Flask
+from threading import Thread
 import random
 import zipfile
 import textwrap
@@ -290,4 +292,21 @@ app = Flask('')
 def home(): return "Bot is Running"
 def run(): app.run(host='0.0.0.0', port=8080)
 Thread(target=lambda: app.run(host='0.0.0.0', port=8080)).start()
-bot.infinity_polling()
+# ... তোমার বাকি সব কোড ...
+
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is alive!"
+
+def run():
+  app.run(host='0.0.0.0',port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
+
+keep_alive()   # <- এই লাইনটা নতুন
+bot.polling()  # <- এইটা আগে থেকেই ছিল, এটাই শেষ লাইন
+
