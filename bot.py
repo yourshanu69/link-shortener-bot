@@ -73,25 +73,32 @@ def handle_message(message):
                 bot.send_video(chat_id, open(tmp.name, 'rb'), caption=f"✅ {yt.title}")
             os.remove(tmp.name)
             bot.delete_message(chat_id, msg.message_id)
+        
         elif state == "yt_audio" and message.text:
             msg = bot.send_message(chat_id, "⏳ MP3 বানাচ্ছি...")
-            yt = YouTube(message.text) if "youtube.com" in message.text else YouTube(f"ytsearch:{message.text}").streams[0]
+            if "youtube.com" in message.text or "youtu.be" in message.text:
+                yt = YouTube(message.text)
+            else:
+                yt = YouTube(f"ytsearch:{message.text}")
             stream = yt.streams.filter(only_audio=True).first()
             with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
                 stream.download(filename=tmp.name)
                 bot.send_audio(chat_id, open(tmp.name, 'rb'), title=yt.title)
             os.remove(tmp.name)
             bot.delete_message(chat_id, msg.message_id)
+        
         elif state == "ai_chat" and message.text:
             msg = bot.send_message(chat_id, "🤖 ভাবতেছি...")
             model = genai.GenerativeModel('gemini-1.5-flash')
             response = model.generate_content(f"তুমি বন্ধুর মতো কথা বলো। ইউজার: {message.text}")
             bot.edit_message_text(response.text, chat_id, msg.message_id)
+        
         elif state == "poem" and message.text:
             msg = bot.send_message(chat_id, "✍️ কবিতা লিখতেছি...")
             model = genai.GenerativeModel('gemini-1.5-flash')
             response = model.generate_content(f"তুমি একজন কবি। {message.text} এই বয়স অনুযায়ী সুন্দর ছন্দমালা/গীতিমালা লিখো। 4-6 লাইন।")
             bot.edit_message_text(response.text, chat_id, msg.message_id)
+        
         elif state == "photo_edit" and message.content_type == 'photo':
             file_info = bot.get_file(message.photo[-1].file_id)
             img_data = bot.download_file(file_info.file_path)
@@ -102,22 +109,9 @@ def handle_message(message):
             else:
                 bot.send_message(chat_id, "❌ Error! API Key চেক করো")
             bot.delete_message(chat_id, msg.message_id)
+        
         elif state == "photo_video" and message.content_type == 'photo':
             file_info = bot.get_file(message.photo[-1].file_id)
             img_url = f"https://api.telegram.org/file/bot{BOT_TOKEN}/{file_info.file_path}"
             msg = bot.send_message(chat_id, "🎥 ভিডিও বানাচ্ছি... 1 মিনিট লাগবে")
-            output = replicate.run("stability-ai/stable-video-diffusion:3f0457e4619daac51203dedfad6e7", input={"input_image": img_url, "video_length": "14_frames_with_svd", "fps": 6})
-            bot.send_video(chat_id, output, caption="✅ ছবি থেকে ভিডিও Done")
-            bot.delete_message(chat_id, msg.message_id)
-        elif state == "qr" and message.text:
-            img = qrcode.make(message.text)
-            bio = BytesIO()
-            bio.name = 'qr.jpeg'
-            img.save(bio, 'JPEG')
-            bio.seek(0)
-            bot.send_photo(chat_id, bio, caption="✅ QR Code Ready")
-        user_state[chat_id] = None
-    except Exception as e:
-        bot.send_message(chat_id, f"❌ Error: {str(e)}\nআবার /start দাও")
-
-bot.infinity_polling()
+            output = replicate.run("stability-ai/stable-video-diffusion:3f0457e4619daac51203dedfad6e7", input={"input_image": img_url, "video_length": "14_frames
