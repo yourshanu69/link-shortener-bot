@@ -9,6 +9,8 @@ import yt_dlp
 import tempfile
 import qrcode
 from io import BytesIO
+from flask import Flask
+from threading import Thread
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -109,7 +111,7 @@ def handle_keyboard(message):
                 response = client.models.generate_content(model="gemini-1.5-flash", contents=f"তুমি বন্ধুর মতো কথা বলো। ইউজার: {message.text}")
                 bot.edit_message_text(response.text, chat_id, msg.message_id)
             except Exception as e:
-                bot.edit_message_text(f"❌ Gemini Error: API Key বসাও নাই\n{str(e)}", chat_id, msg.message_id)
+                bot.edit_message_text(f"❌ Gemini Error: GEMINI_API_KEY বসাও নাই", chat_id, msg.message_id)
 
         elif state == "poem" and message.text:
             msg = bot.send_message(chat_id, "✍️ কবিতা লিখতেছি...")
@@ -117,7 +119,7 @@ def handle_keyboard(message):
                 response = client.models.generate_content(model="gemini-1.5-flash", contents=f"তুমি একজন কবি। {message.text} এই বয়স অনুযায়ী সুন্দর ছন্দমালা/গীতিমালা লিখো। 4-6 লাইন।")
                 bot.edit_message_text(response.text, chat_id, msg.message_id)
             except Exception as e:
-                bot.edit_message_text(f"❌ Gemini Error: API Key বসাও নাই", chat_id, msg.message_id)
+                bot.edit_message_text(f"❌ Gemini Error: GEMINI_API_KEY বসাও নাই", chat_id, msg.message_id)
 
         elif state == "qr" and message.text:
             img = qrcode.make(message.text)
@@ -160,22 +162,7 @@ def handle_keyboard(message):
                 response = client.models.generate_content(model="gemini-1.5-flash", contents=f"এই লেখাটা যদি ইংলিশ হয় বাংলায়, আর বাংলা হলে ইংলিশে ট্রান্সলেট করো: {message.text}")
                 bot.edit_message_text(f"🌐 **Translation:**\n\n{response.text}", chat_id, msg.message_id)
             except Exception as e:
-                bot.edit_message_text(f"❌ Gemini Error: API Key বসাও নাই", chat_id, msg.message_id)
-
-        user_state[chat_id] = None
-
-    except Exception as e:
-        bot.send_message(chat_id, f"❌ Error: {str(e)}\nআবার /start দাও")
-        user_state[chat_id] = None
-
-@
-        elif state == "translate" and message.text:
-            msg = bot.send_message(chat_id, "🌐 ট্রান্সলেট করতেছি...")
-            try:
-                response = client.models.generate_content(model="gemini-1.5-flash", contents=f"এই লেখাটা যদি ইংলিশ হয় বাংলায়, আর বাংলা হলে ইংলিশে ট্রান্সলেট করো: {message.text}")
-                bot.edit_message_text(f"🌐 **Translation:**\n\n{response.text}", chat_id, msg.message_id)
-            except Exception as e:
-                bot.edit_message_text(f"❌ Gemini Error: {str(e)}", chat_id, msg.message_id)
+                bot.edit_message_text(f"❌ Gemini Error: GEMINI_API_KEY বসাও নাই", chat_id, msg.message_id)
 
         user_state[chat_id] = None
 
@@ -196,7 +183,7 @@ def handle_photo(message):
             if r.status_code == 200:
                 bot.send_photo(chat_id, r.content, caption="✅ BG Remove Done")
             else:
-                bot.send_message(chat_id, "❌ Error! API Key চেক করো")
+                bot.send_message(chat_id, "❌ Error! REMOVE_BG_KEY বসাও নাই")
             bot.delete_message(chat_id, msg.message_id)
 
         elif state == "photo_video":
@@ -209,7 +196,7 @@ def handle_photo(message):
 
         user_state[chat_id] = None
     except Exception as e:
-        bot.send_message(chat_id, f"❌ Error: {str(e)}")
+        bot.send_message(chat_id, f"❌ Error: REPLICATE_TOKEN বা REMOVE_BG_KEY বসাও নাই")
 
 from telebot.types import BotCommand
 commands = [
@@ -226,11 +213,8 @@ commands = [
     BotCommand("translate", "যেকোনো ভাষা ট্রান্সলেট"),
 ]
 bot.set_my_commands(commands)
-from flask import Flask
-from threading import Thread
 
 app = Flask('')
-
 @app.route('/')
 def home():
     return "Bot is running!"
@@ -242,7 +226,5 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-keep_alive() # এই লাইনটা bot.infinity_polling() এর ঠিক উপরে বসাও
-
+keep_alive()
 bot.infinity_polling()
-
