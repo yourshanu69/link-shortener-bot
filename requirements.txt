@@ -4,3 +4,4 @@ google-genai
 replicate
 requests
 qrcode
+flask
