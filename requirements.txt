@@ -1,6 +1,6 @@
 pyTelegramBotAPI
 pytube
-google-generativeai
+google-genai
 replicate
 requests
 qrcode
