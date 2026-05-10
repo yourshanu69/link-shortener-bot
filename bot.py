@@ -5,7 +5,7 @@ import replicate
 from google import genai
 from google.genai import types
 from telebot import types as tele_types
-from pytube import YouTube, Search
+import yt_dlp
 import tempfile
 import qrcode
 from io import BytesIO
@@ -74,26 +74,33 @@ def handle_keyboard(message):
     try:
         if state == "yt_video" and message.text:
             msg = bot.send_message(chat_id, "⏳ ডাউনলোড হচ্ছে...")
-            yt = YouTube(message.text)
-            stream = yt.streams.get_highest_resolution()
-            with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tmp:
-                stream.download(filename=tmp.name)
-                bot.send_video(chat_id, open(tmp.name, 'rb'), caption=f"✅ {yt.title}")
-            os.remove(tmp.name)
+            try:
+                url = message.text.strip()
+                ydl_opts = {'format': 'best[height<=720]', 'outtmpl': tempfile.gettempdir() + '/%(title)s.%(ext)s', 'quiet': True}
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    file_path = ydl.prepare_filename(info)
+                bot.send_video(chat_id, open(file_path, 'rb'), caption=f"✅ {info['title']}")
+                os.remove(file_path)
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ YT Error: এই ভিডিও ডাউনলোড হবে না\n{str(e)}")
             bot.delete_message(chat_id, msg.message_id)
 
         elif state == "yt_audio" and message.text:
             msg = bot.send_message(chat_id, "⏳ MP3 বানাচ্ছি...")
-            if "youtube.com" in message.text or "youtu.be" in message.text:
-                yt = YouTube(message.text)
-            else:
-                s = Search(message.text)
-                yt = s.results[0]
-            stream = yt.streams.filter(only_audio=True).first()
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
-                stream.download(filename=tmp.name)
-                bot.send_audio(chat_id, open(tmp.name, 'rb'), title=yt.title)
-            os.remove(tmp.name)
+            try:
+                url = message.text.strip()
+                if not ("youtube.com" in url or "youtu.be" in url):
+                    url = f"ytsearch:{url}"
+                ydl_opts = {'format': 'bestaudio/best', 'outtmpl': tempfile.gettempdir() + '/%(title)s.%(ext)s', 'postprocessors': [{'key': 'FFmpegExtractAudio','preferredcodec': 'mp3','preferredquality': '192'}], 'quiet': True}
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    if 'entries' in info: info = info['entries'][0]
+                    file_path = ydl.prepare_filename(info).rsplit(".", 1)[0] + ".mp3"
+                bot.send_audio(chat_id, open(file_path, 'rb'), title=info['title'])
+                os.remove(file_path)
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ MP3 Error: গান পাওয়া যায় নাই\n{str(e)}")
             bot.delete_message(chat_id, msg.message_id)
 
         elif state == "ai_chat" and message.text:
@@ -102,7 +109,7 @@ def handle_keyboard(message):
                 response = client.models.generate_content(model="gemini-1.5-flash", contents=f"তুমি বন্ধুর মতো কথা বলো। ইউজার: {message.text}")
                 bot.edit_message_text(response.text, chat_id, msg.message_id)
             except Exception as e:
-                bot.edit_message_text(f"❌ Gemini Error: {str(e)}", chat_id, msg.message_id)
+                bot.edit_message_text(f"❌ Gemini Error: API Key বসাও নাই\n{str(e)}", chat_id, msg.message_id)
 
         elif state == "poem" and message.text:
             msg = bot.send_message(chat_id, "✍️ কবিতা লিখতেছি...")
@@ -110,7 +117,7 @@ def handle_keyboard(message):
                 response = client.models.generate_content(model="gemini-1.5-flash", contents=f"তুমি একজন কবি। {message.text} এই বয়স অনুযায়ী সুন্দর ছন্দমালা/গীতিমালা লিখো। 4-6 লাইন।")
                 bot.edit_message_text(response.text, chat_id, msg.message_id)
             except Exception as e:
-                bot.edit_message_text(f"❌ Gemini Error: {str(e)}", chat_id, msg.message_id)
+                bot.edit_message_text(f"❌ Gemini Error: API Key বসাও নাই", chat_id, msg.message_id)
 
         elif state == "qr" and message.text:
             img = qrcode.make(message.text)
@@ -122,13 +129,18 @@ def handle_keyboard(message):
 
         elif state == "insta" and message.text:
             msg = bot.send_message(chat_id, "⏳ Insta ভিডিও ডাউনলোড হচ্ছে...")
-            api_url = f"https://api.safone.dev/instadl?url={message.text}"
-            r = requests.get(api_url).json()
-            if r['status'] == 200:
-                video_url = r['data'][0]['url']
-                bot.send_video(chat_id, video_url, caption="✅ Instagram Video Done")
-            else:
-                bot.send_message(chat_id, "❌ লিংক ভুল বা Private Account")
+            try:
+                url = message.text.strip()
+                api_url = f"https://instagram-downloader-download-instagram-videos-stories.p.rapidapi.com/index"
+                headers = {"X-RapidAPI-Key": "a1b2c3d4e5msh6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7", "X-RapidAPI-Host": "instagram-downloader-download-instagram-videos-stories.p.rapidapi.com"}
+                r = requests.get(api_url, headers=headers, params={"url": url}, timeout=30)
+                data = r.json()
+                if data.get("media"):
+                    bot.send_video(chat_id, data["media"], caption="✅ Instagram Video Done")
+                else:
+                    bot.send_message(chat_id, "❌ ভিডিও পাওয়া যায় নাই। Private Account বা লিংক ভুল")
+            except Exception as e:
+                bot.send_message(chat_id, f"❌ Insta Error: API ডাউন")
             bot.delete_message(chat_id, msg.message_id)
 
         elif state == "weather" and message.text:
@@ -136,15 +148,27 @@ def handle_keyboard(message):
             city = message.text
             url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API}&units=metric&lang=bn"
             r = requests.get(url).json()
-            if r['cod'] == 200:
-                temp = r['main']['temp']
-                desc = r['weather'][0]['description']
-                humidity = r['main']['humidity']
-                text = f"🌤️ **{city} এর আবহাওয়া**\n\n🌡️ তাপমাত্রা: {temp}°C\n☁️ অবস্থা: {desc}\n💧 আদ্রতা: {humidity}%"
+            if r.get('cod') == 200:
+                text = f"🌤️ **{city} এর আবহাওয়া**\n\n🌡️ তাপমাত্রা: {r['main']['temp']}°C\n☁️ অবস্থা: {r['weather'][0]['description']}\n💧 আদ্রতা: {r['main']['humidity']}%"
                 bot.edit_message_text(text, chat_id, msg.message_id, parse_mode="Markdown")
             else:
-                bot.edit_message_text("❌ শহরের নাম ভুল", chat_id, msg.message_id)
+                bot.edit_message_text("❌ শহরের নাম ভুল বা WEATHER_API Key বসাও নাই", chat_id, msg.message_id)
 
+        elif state == "translate" and message.text:
+            msg = bot.send_message(chat_id, "🌐 ট্রান্সলেট করতেছি...")
+            try:
+                response = client.models.generate_content(model="gemini-1.5-flash", contents=f"এই লেখাটা যদি ইংলিশ হয় বাংলায়, আর বাংলা হলে ইংলিশে ট্রান্সলেট করো: {message.text}")
+                bot.edit_message_text(f"🌐 **Translation:**\n\n{response.text}", chat_id, msg.message_id)
+            except Exception as e:
+                bot.edit_message_text(f"❌ Gemini Error: API Key বসাও নাই", chat_id, msg.message_id)
+
+        user_state[chat_id] = None
+
+    except Exception as e:
+        bot.send_message(chat_id, f"❌ Error: {str(e)}\nআবার /start দাও")
+        user_state[chat_id] = None
+
+@
         elif state == "translate" and message.text:
             msg = bot.send_message(chat_id, "🌐 ট্রান্সলেট করতেছি...")
             try:
