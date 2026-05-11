@@ -347,17 +347,7 @@ def handle_text(message):
         elif state == "fake_msg":
             name = user_files[chat_id][0]
             img = Image.new('RGB', (450, 150), '#E5DDD5'); d = ImageDraw.Draw(img)
-            d.rounded_rectangle([(10, 10), (440, 140)], 15, fill='white')
-            d.text((25, 25), name, fill='#075E54'); wrapped = textwrap.fill(text, width=40); d.text((25, 60), wrapped, fill='black')
-            bio = BytesIO(); bio.name = 'fake.png'; img.save(bio, 'PNG'); bio.seek(0)
-            bot.send_photo(chat_id, bio, caption="✅ Fake Chat Ready! 😂"); cleanup(chat_id); start(message)
-        elif state == "roast":
-            bot.send_message(chat_id, f"🔥 **Roast For {text}:**\n\n{random.choice(ROAST_LINES).format(name=text)}")
-            user_state[chat_id] = None; start(message)
-        elif state == "kutta_roast":
-            bot.send_message(chat_id, f"🐕 **কুত্তা Roast:**\n\n{random.choice(KUTTA_ROAST).format(name=text)}")
-            user_state[chat_id] = None; start(message)
-                elif state.startswith("prank_👦") or state.startswith("prank_👨") or state.startswith("prank_👴") or state.startswith("prank_👧") or state.startswith("prank_👩") or state.startswith("prank_👵"):
+                    elif state.startswith("prank_👦") or state.startswith("prank_👨") or state.startswith("prank_👴") or state.startswith("prank_👧") or state.startswith("prank_👩") or state.startswith("prank_👵"):
             msg = bot.send_message(chat_id, "⏳ Voice বানাচ্ছি... 🎙️ লম্বা লাইন হলে 10-15 সেকেন্ড লাগবে")
             try:
                 is_male = "👦" in state or "👨" in state or "👴" in state
