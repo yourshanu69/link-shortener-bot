@@ -357,19 +357,27 @@ def handle_text(message):
         elif state == "kutta_roast":
             bot.send_message(chat_id, f"🐕 **কুত্তা Roast:**\n\n{random.choice(KUTTA_ROAST).format(name=text)}")
             user_state[chat_id] = None; start(message)
-        elif state == "celeb":
-            price = get_hash_num(text, 500)
-            bot.send_message(chat_id, random.choice(CELEB_PRICE).format(name=text, price=price))
+                elif state.startswith("prank_👦") or state.startswith("prank_👨") or state.startswith("prank_👴") or state.startswith("prank_👧") or state.startswith("prank_👩") or state.startswith("prank_👵"):
+            msg = bot.send_message(chat_id, "⏳ Voice বানাচ্ছি... 🎙️ লম্বা লাইন হলে 10-15 সেকেন্ড লাগবে")
+            try:
+                is_male = "👦" in state or "👨" in state or "👴" in state
+                is_slow = "বাচ্চা" in state or "বুড়া" in state or "বুড়ি" in state
+                tld = 'com.au' if is_male else 'co.in'
+                tts = gTTS(text=text, lang='bn', tld=tld, slow=is_slow)
+                out = f"/tmp/prank_{chat_id}.mp3"
+                tts.save(out)
+                caption = f"🔊 {state.replace('prank_','')} Prank Voice:\n\n“{text}”\n\nবন্ধুকে পাঠাও 😂"
+                bot.send_voice(chat_id, open(out, 'rb'), caption=caption)
+                os.remove(out)
+            except Exception as e:
+                bot.send_message(chat_id, "❌ Voice বানাতে পারলাম না। 500 অক্ষরের বেশি দিও না।")
+            bot.delete_message(chat_id, msg.message_id)
+            cleanup(chat_id); start(message)
+        elif state == "deep_link":
+            bot_username = bot.get_me().username
+            link = f"https://t.me/{bot_username}?start={text}"
+            bot.send_message(chat_id, f"✅ **Deep Link Ready:**\n\n`{link}`\n\nশেয়ার করো 🔗")
             user_state[chat_id] = None; start(message)
-        elif state == "fortune":
-            name = text.split()[0]; amount = get_hash_num(text, 100) * 10000
-            bot.send_message(chat_id, random.choice(FORTUNE).format(name=name, amount=amount))
-            user_state[chat_id] = None; start(message)
-            elif state == "deep_link":
-        bot_username = bot.get_me().username
-        link = f"https://t.me/{bot_username}?start={text}"
-        bot.send_message(chat_id, f"✅ **Deep Link Ready:**\n\n`{link}`\n\nশেয়ার করো 🔗")
-        user_state[chat_id] = None; start(message)
-    elif state == "recharge_num":
-        user_state[chat_id] = "recharge_amount"; user_files[chat_id] = [text]
-        bot.send_message(chat_id, f"ওকে {text} নাম্বারে কত টাকা রিচার্জ? যেমন: 500")
+        elif state == "recharge_num":
+            user_state[chat_id] = "recharge_amount"; user_files[chat_id] = [text]
+            bot.send_message(chat_id, f"ওকে {text} নাম্বারে কত টাকা রিচার্জ? যেমন: 500")
