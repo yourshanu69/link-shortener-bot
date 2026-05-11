@@ -183,20 +183,30 @@ def cleanup(chat_id):
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    total_users, is_new = save_user(message.from_user.id, message.from_user.username)
-    cleanup(message.chat.id)
-
-    # Admin হইলে Total User দেখাবে
-    admin_text = f"\n\n📊 **Admin:** Total User {total_users} জন" if message.from_user.id == ADMIN_ID else ""
-
+    chat_id = message.chat.id
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add("📄 Image→PDF", "🔤 Stylish Font", "🖼️ Sticker", "📦 Zip", "💬 Fake Chat",
-               "🔥 Roast", "💎 Beauty Meter", "💰 Celebrity দাম", "🎲 ভাগ্য গণনা", "🔗 Deep Link",
-               "💸 Fake রিচার্জ", "🐕 কুত্তা Roast", "🎭 Prank Voice", "❤️ Love ক্যালকুলেটর", "🎯 Dice রোল",
-               "🪞 উল্টা লেখা", "🔢 নাম্বার গেস", "😂 জোকস", "🧮 ক্যালকুলেটর", "📢 Announcement")
-    markup.add("🇧🇩 64 জেলা তথ্য", "📰 কারেন্ট নিউজ", "👤 Shakil Ahmed Shanu", "🎵 শুনতে চাইলে ক্লিক", "📞 Contact Admin")
-    bot.send_message(message.chat.id, random_reply("start") + admin_text, reply_markup=markup)
-
+    
+    btn1 = types.KeyboardButton('📷 Image→PDF'); btn2 = types.KeyboardButton('🔤 Stylish Font')
+    btn3 = types.KeyboardButton('🖼️ Sticker'); btn4 = types.KeyboardButton('📦 Zip')
+    btn5 = types.KeyboardButton('💬 Fake Chat'); btn6 = types.KeyboardButton('🔥 Roast')
+    btn7 = types.KeyboardButton('💎 Beauty Meter'); btn8 = types.KeyboardButton('💰 Celebrity দাম')
+    btn9 = types.KeyboardButton('🎲 ভাগ্য গণনা'); btn10 = types.KeyboardButton('🔗 Deep Link')
+    btn11 = types.KeyboardButton('💸 Fake রিচার্জ'); btn12 = types.KeyboardButton('🐕 কুত্তা Roast')
+    btn13 = types.KeyboardButton('🎭 Prank Voice'); btn14 = types.KeyboardButton('❤️ Love ক্যালকুলেটর')
+    btn15 = types.KeyboardButton('🗣️ TTS'); btn16 = types.KeyboardButton('🗑️ Remove BG')
+    btn17 = types.KeyboardButton('🔄 Image→Link'); btn18 = types.KeyboardButton('📄 PDF→Text')
+    btn19 = types.KeyboardButton('📝 Text→PDF'); btn20 = types.KeyboardButton('🔒 Password PDF')
+    btn21 = types.KeyboardButton('🎙️ Voice Change'); btn22 = types.KeyboardButton('💼 Job CV')
+    btn23 = types.KeyboardButton('🏆 Topper Result'); btn24 = types.KeyboardButton('💰 Fake Payment')
+    btn25 = types.KeyboardButton('🎬 YouTube Thumbnail'); btn26 = types.KeyboardButton('📰 Fake News')
+    btn27 = types.KeyboardButton('🏦 Bank Balance SS'); btn28 = types.KeyboardButton('🎮 FF Diamond')
+    
+    markup.add(btn1, btn2, btn3, btn4, btn5, btn6, btn7, btn8, btn9, btn10, 
+               btn11, btn12, btn13, btn14, btn15, btn16, btn17, btn18, btn19, btn20,
+               btn21, btn22, btn23, btn24, btn25, btn26, btn27, btn28)
+    
+    bot.send_message(chat_id, "🔥 **বস আসছে! 28টা টুল নিয়ে হাজির** 😎\n\nমজা + কাজ সব হবে এক জায়গায় 👇", reply_markup=markup)
+    user_state[chat_id] = None; user_files[chat_id] = []
 @bot.message_handler(commands=['stats'])
 def stats_cmd(message):
     if message.from_user.id == ADMIN_ID:
