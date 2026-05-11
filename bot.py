@@ -339,24 +339,20 @@ def handle_text(message):
 
     try:
         if state == "font":
-            result = f"𝗕𝗼𝗹𝗱:\n{FONTS['bold'](text)}\n\n𝘪𝘵𝘢𝘭𝘪𝘤:\n{FONTS['italic'](text)}\n\n𝙼𝚘𝚗𝚘:\n{FONTS['mono'](text)}\n\nকপি করে Bio তে লাগাও 😉"
-            bot.send_message(chat_id, result); user_state[chat_id] = None; start(message)
-        elif state == "fake_name":
-            user_state[chat_id] = "fake_msg"; user_files[chat_id] = [text]
-            bot.send_message(chat_id, f"ওকে। `{text}` কি মেসেজ দিবে?", parse_mode="Markdown")
-        elif state == "fake_msg":
-            name = user_files[chat_id][0]
-            img = Image.new('RGB', (450, 150), '#E5DDD5'); d = ImageDraw.Draw(img)
-                    elif state.startswith("prank_👦") or state.startswith("prank_👨") or state.startswith("prank_👴") or state.startswith("prank_👧") or state.startswith("prank_👩") or state.startswith("prank_👵"):
-            msg = bot.send_message(chat_id, "⏳ Voice বানাচ্ছি... 🎙️ লম্বা লাইন হলে 10-15 সেকেন্ড লাগবে")
-            try:
-                is_male = "👦" in state or "👨" in state or "👴" in state
-                is_slow = "বাচ্চা" in state or "বুড়া" in state or "বুড়ি" in state
-                        elif state == "font":
             fonts = {"bold": "**{}**", "italic": "__{}__", "mono": "`{}`", "strike": "~~{}~~", "bubble": "ⓑⓤⓑⓛⓔ"}
             styled = "\n\n".join([f"{name.title()}:\n{style.format(text)}" for name, style in fonts.items()])
             bot.send_message(chat_id, f"✅ **Stylish Font Ready:**\n\n{styled}")
             user_state[chat_id] = None; start(message)
+        elif state == "fake_name":
+            user_state[chat_id] = "fake_msg"; user_files[chat_id] = [text]
+            bot.send_message(chat_id, f"ভালো `{text}` কি বলবেন লিখো", parse_mode="Markdown")
+        elif state == "fake_msg":
+            name = user_files[chat_id][0]
+            img = Image.new('RGB', (450, 150), '#E5DDD5'); d = ImageDraw.Draw(img)
+            d.text((10,10), name, fill='black'); d.text((10,40), text, fill='black')
+            out = f"/tmp/fake_{chat_id}.png"; img.save(out)
+            bot.send_photo(chat_id, open(out, 'rb'), caption="✅ Fake Chat Ready")
+            os.remove(out); cleanup(chat_id); start(message)
         elif state.startswith("prank_"):
             msg = bot.send_message(chat_id, "⏳ Voice বানাচ্ছি... 🎙️ লম্বা লাইন হলে 10-15 সেকেন্ড লাগবে")
             try:
