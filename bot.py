@@ -365,5 +365,11 @@ def handle_text(message):
             name = text.split()[0]; amount = get_hash_num(text, 100) * 10000
             bot.send_message(chat_id, random.choice(FORTUNE).format(name=name, amount=amount))
             user_state[chat_id] = None; start(message)
-        elif state == "deep_link":
-            
+            elif state == "deep_link":
+        bot_username = bot.get_me().username
+        link = f"https://t.me/{bot_username}?start={text}"
+        bot.send_message(chat_id, f"✅ **Deep Link Ready:**\n\n`{link}`\n\nশেয়ার করো 🔗")
+        user_state[chat_id] = None; start(message)
+    elif state == "recharge_num":
+        user_state[chat_id] = "recharge_amount"; user_files[chat_id] = [text]
+        bot.send_message(chat_id, f"ওকে {text} নাম্বারে কত টাকা রিচার্জ? যেমন: 500")
