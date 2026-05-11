@@ -366,4 +366,4 @@ def handle_text(message):
             bot.send_message(chat_id, random.choice(FORTUNE).format(name=name, amount=amount))
             user_state[chat_id] = None; start(message)
         elif state == "deep_link":
-            b
+            
