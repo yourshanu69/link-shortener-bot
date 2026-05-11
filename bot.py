@@ -352,6 +352,16 @@ def handle_text(message):
             try:
                 is_male = "👦" in state or "👨" in state or "👴" in state
                 is_slow = "বাচ্চা" in state or "বুড়া" in state or "বুড়ি" in state
+                        elif state == "font":
+            fonts = {"bold": "**{}**", "italic": "__{}__", "mono": "`{}`", "strike": "~~{}~~", "bubble": "ⓑⓤⓑⓛⓔ"}
+            styled = "\n\n".join([f"{name.title()}:\n{style.format(text)}" for name, style in fonts.items()])
+            bot.send_message(chat_id, f"✅ **Stylish Font Ready:**\n\n{styled}")
+            user_state[chat_id] = None; start(message)
+        elif state.startswith("prank_"):
+            msg = bot.send_message(chat_id, "⏳ Voice বানাচ্ছি... 🎙️ লম্বা লাইন হলে 10-15 সেকেন্ড লাগবে")
+            try:
+                is_male = "👦" in state or "👨" in state or "👴" in state
+                is_slow = "বাচ্চা" in state or "বুড়া" in state or "বুড়ি" in state
                 tld = 'com.au' if is_male else 'co.in'
                 tts = gTTS(text=text, lang='bn', tld=tld, slow=is_slow)
                 out = f"/tmp/prank_{chat_id}.mp3"
