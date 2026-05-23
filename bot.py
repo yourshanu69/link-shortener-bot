@@ -319,4 +319,7 @@ def greeting_name(message):
     bot.send_message(message.chat.id, random.choice(greetings))
     user_state[message.chat.id] = None
 
-bot.polling()
+if __name__ == "__main__":
+    Thread(target=run_flask).start()
+    print("Bot started polling")
+    bot.polling(none_stop=True)
