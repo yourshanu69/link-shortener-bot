@@ -1,12 +1,15 @@
-import os
+import random
 import telebot
+import random
+user_state = {}
+from telebot import types
+import os
 from telebot import types
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import requests
 import json
 import textwrap
-import random
 from flask import Flask
 from threading import Thread
 
@@ -24,7 +27,6 @@ Thread(target=run).start()
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
 bot = telebot.TeleBot(BOT_TOKEN)
 
-user_state = {}
 user_files = {}
 
 # ====== OLD 28 TOOLS START ======
