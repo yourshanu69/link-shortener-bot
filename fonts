@@ -1,1 +1,2 @@
-
+font1 = ImageFont.truetype("SolaimanLipi.ttf", 90)
+font2 = ImageFont.truetype("SolaimanLipi.ttf", 60)
