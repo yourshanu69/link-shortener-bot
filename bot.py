@@ -17,7 +17,7 @@ if not BOT_TOKEN:
     print("ERROR: BOT_TOKEN not set!")
     exit()
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN, threaded=True, skip_pending=True)
 user_state = {}
 PREMIUM_USERS = [1692907487]
 
@@ -136,7 +136,7 @@ def greeting_name(message):
     user_state[message.chat.id] = None
 
 def run_fake_logic(message, tool):
-    txt = message.text
+    txt = message.text if message.text else ""
     responses = {
         'Roast': f"{txt} কে roast: তুমি WiFi ছাড়া Google এর মতো 😂",
         'Beauty Meter': f"💎 Beauty Score: {random.randint(70, 99)}%",
@@ -176,7 +176,7 @@ def handle_default(message):
 def run_bot():
     bot.remove_webhook()
     print("Bot polling started")
-    bot.polling(none_stop=True, drop_pending_updates=True)
+    bot.infinity_polling(timeout=60, long_polling_timeout=50)
 
 if __name__ == "__main__":
     Thread(target=run_bot, daemon=True).start()
