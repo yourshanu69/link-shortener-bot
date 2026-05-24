@@ -320,7 +320,12 @@ def greeting_name(message):
     bot.send_message(message.chat.id, random.choice(greetings))
     user_state[message.chat.id] = None
 
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is running"
+
 if __name__ == "__main__":
-    Thread(target=run_flask).start()
-    print("Bot started polling")
-    bot.polling(none_stop=True)
+    Thread(target=lambda: bot.polling(none_stop=True)).start()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
