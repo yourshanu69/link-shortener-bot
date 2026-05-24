@@ -327,7 +327,12 @@ def home():
     return "Bot is running"
 
 if __name__ == "__main__":
-    Thread(target=lambda: bot.polling(none_stop=True, drop_pending_updates=True)
+    # আগে webhook থাকলে কেটে দাও
+    bot.remove_webhook()
     
+    # বট থ্রেডে চালাও
+    Thread(target=lambda: bot.polling(none_stop=True, drop_pending_updates=True)).start()
+    
+    # Flask চালাও
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
