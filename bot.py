@@ -21,18 +21,41 @@ bot = telebot.TeleBot(BOT_TOKEN)
 user_state = {}
 PREMIUM_USERS = [1692907487]
 
+# 1. আগে tools_prompt ডিফাইন করো
+tools_prompt = {
+    'Banner Creator': "শুরু হচ্ছে...",
+    'FF Diamond': "🎮 UID দাও",
+    'Fake News': "📰 Headline লিখো",
+    'Eid Rules': "দেখাচ্ছি...",
+    'Bank Balance SS': "🏦 Amount লিখো",
+    'Eid Greeting': "কার জন্য বানাবা? নাম লিখো",
+    'Fun Zone': "খুলছে...",
+    'Love ক্যালকুলেটর': "❤️ নাম1, নাম2 লিখো",
+    'Roast': "🔥 কাকে roast করবা?",
+    'Beauty Meter': "💎 ছবি পাঠাও, স্কোর দেব",
+    'ভাগ্য গণনা': "🎲 তোমার নাম লিখো",
+    'Fake Payment': "💰 Amount লিখো",
+    'Image→PDF': "📷 ছবি পাঠাও",
+    'Sticker': "🖼️ ছবি পাঠাও",
+    'Remove BG': "🗑️ ছবি পাঠাও",
+    'Text→PDF': "📝 Text লিখো",
+    'PDF→Text': "📄 PDF পাঠাও",
+    'Fake Chat': "💬 নাম1, নাম2 লিখো",
+    'Stylish Font': "🔤 Text লিখো",
+    'YouTube Thumbnail': "🎬 Title লিখো",
+    'TTS': "🗣️ Text লিখো",
+    'Deep Link': "🔗 লিংক পাঠাও"
+}
+
 @bot.message_handler(commands=['start'])
 def start(message):
     chat_id = message.chat.id
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    buttons = [
-        '📷 Image→PDF', '🖼️ Sticker', '🗑️ Remove BG', '📝 Text→PDF', '📄 PDF→Text',
-        '🔥 Roast', '❤️ Love ক্যালকুলেটর', '🎲 ভাগ্য গণনা', '💎 Beauty Meter', '🎭 Fun Zone',
-        '💬 Fake Chat', '💰 Fake Payment', '🏦 Bank Balance SS', '📰 Fake News', '🎮 FF Diamond',
-        '🎨 Banner Creator', '🔤 Stylish Font', '🎬 YouTube Thumbnail', '💌 Eid Greeting',
-        '🗣️ TTS', '🔗 Deep Link', '🕌 Eid Rules'
-    ]
+    
+    # 2. বাটন লেবেল স্ক্রিনশটের সাথে মিলাও - ইমোজি ছাড়া
+    buttons = list(tools_prompt.keys())
     markup.add(*[types.KeyboardButton(btn) for btn in buttons])
+    
     bot.send_message(chat_id, "🔥 **22টা টুল রেডি** 😎\nনিচ থেকে যেকোনো একটা সিলেক্ট করো 👇",
                      reply_markup=markup, parse_mode="Markdown")
     user_state[chat_id] = None
@@ -53,77 +76,38 @@ def handle_all(message):
         user_state[chat_id] = f"wait_{text}"
         bot.send_message(chat_id, tools_prompt[text])
 
-        # 4টা টুলের স্পেশাল হ্যান্ডলার
-        if text == '🎨 Banner Creator':
+        if text == 'Banner Creator':
             banner_start(message)
-        elif text == '🕌 Eid Rules':
+        elif text == 'Eid Rules':
             eid_rules(message)
-        elif text == '🎭 Fun Zone':
+        elif text == 'Fun Zone':
             fun_zone(message)
-        elif text == '💌 Eid Greeting':
+        elif text == 'Eid Greeting':
             eid_greeting(message)
+        else:
+            # বাকি 18টার ডেমো রেসপন্স
+            user_state[chat_id] = None
+            run_fake_logic(message, text)
     else:
         bot.send_message(chat_id, "মেনু থেকে একটা অপশন সিলেক্ট করো 👇")
 
-tools_prompt = {
-    '📷 Image→PDF': "📷 ছবি পাঠাও, 'Done' লিখলে PDF বানায় দেব",
-    '🖼️ Sticker': "🖼️ ছবি পাঠাও, স্টিকার বানায় দেব",
-    '🗑️ Remove BG': "🗑️ ছবি পাঠাও, BG রিমুভ করবো",
-    '📝 Text→PDF': "📝 Text লিখো, PDF বানাবো",
-    '📄 PDF→Text': "📄 PDF পাঠাও, টেক্সট বের করবো",
-    '🔥 Roast': "🔥 কাকে roast করবা?",
-    '❤️ Love ক্যালকুলেটর': "❤️ নাম1, নাম2 লিখো",
-    '🎲 ভাগ্য গণনা': "🎲 তোমার নাম লিখো",
-    '💎 Beauty Meter': "💎 ছবি পাঠাও, বিউটি স্কোর দেব",
-    '🎭 Fun Zone': "🎭 খুলছে...",
-    '💬 Fake Chat': "💬 নাম1, নাম2 লিখো",
-    '💰 Fake Payment': "💰 Amount লিখো",
-    '🏦 Bank Balance SS': "🏦 Amount লিখো",
-    '📰 Fake News': "📰 Headline লিখো",
-    '🎮 FF Diamond': "🎮 UID দাও",
-    '🎨 Banner Creator': "🎨 শুরু হচ্ছে...",
-    '🔤 Stylish Font': "🔤 Text লিখো",
-    '🎬 YouTube Thumbnail': "🎬 Title লিখো",
-    '💌 Eid Greeting': "💌 বানাচ্ছি...",
-    '🗣️ TTS': "🗣️ Text লিখো",
-    '🔗 Deep Link': "🔗 লিংক পাঠাও",
-    '🕌 Eid Rules': "🕌 দেখাচ্ছি..."
-}
-
-@bot.message_handler(func=lambda m: user_state.get(m.chat.id, "").startswith("wait_"))
-def process_tool(message):
-    chat_id = message.chat.id
-    state = user_state[chat_id]
-    tool = state.replace("wait_", "")
-    user_state[chat_id] = None
-
-    inp = message.text if message.text else "ছবি"
-
+def run_fake_logic(message, tool):
+    txt = message.text
     responses = {
-        '📷 Image→PDF': "✅ PDF রেডি! Demo mode - রিয়েল লজিক চাইলে বলো",
-        '🖼️ Sticker': "✅ Sticker বানানো হলো!",
-        '🗑️ Remove BG': "✅ BG রিমুভ হলো!",
-        '📝 Text→PDF': f"✅ PDF বানালাম: {inp[:20]}...",
-        '📄 PDF→Text': "✅ টেক্সট বের করলাম: Demo text here...",
-        '🔥 Roast': f"{inp} কে roast: তুমি WiFi ছাড়া Google এর মতো 😂",
-        '❤️ Love ক্যালকুলেটর': f"❤️ Love: {random.randint(60, 99)}% মিল আছে",
-        '🎲 ভাগ্য গণনা': random.choice(["আজ টাকা পাবে", "ভালো খবর আসবে", "সাবধানে থেকো"]),
-        '💎 Beauty Meter': f"💎 Beauty Score: {random.randint(70, 99)}%",
-        '💬 Fake Chat': f"✅ Fake chat বানালাম {inp}",
-        '💰 Fake Payment': f"✅ {inp}৳ Payment Successful! Fake 😎",
-        '🏦 Bank Balance SS': f"✅ Balance: {inp}৳\nFake SS বানানো হলো",
-        '📰 Fake News': f"BREAKING: {inp} - সোর্স: ফেসবুক ইউনিভার্সিটি",
-        '🎮 FF Diamond': f"✅ UID {inp} এ 500 Diamond পাঠানো হলো! Fake 😎",
-        '🔤 Stylish Font': f"𝐒𝐭𝐲𝐥𝐢𝐬𝐡: {inp}",
-        '🎬 YouTube Thumbnail': f"✅ Thumbnail রেডি! Title: {inp}",
-        '🗣️ TTS': f"✅ Voice রেডি! Demo mode",
-        '🔗 Deep Link': f"✅ Short Link: short.ly/{random.randint(1000,9999)}",
+        'Roast': f"{txt} কে roast: তুমি WiFi ছাড়া Google এর মতো 😂",
+        'Beauty Meter': f"💎 Beauty Score: {random.randint(70, 99)}%",
+        'ভাগ্য গণনা': random.choice(["আজ টাকা পাবে", "ভালো খবর আসবে"]),
+        'Love ক্যালকুলেটর': f"❤️ Love: {random.randint(60, 99)}% মিল আছে",
+        'Fake Payment': f"✅ {txt}৳ Payment Successful! Fake 😎",
+        'FF Diamond': f"✅ UID {txt} এ 500 Diamond পাঠানো হলো! Fake 😎",
+        'Fake News': f"BREAKING: {txt} - সোর্স: ফেসবুক ইউনিভার্সিটি",
+        'Bank Balance SS': f"✅ Balance: {txt}৳\nFake SS বানানো হলো"
     }
     msg = responses.get(tool, f"✅ {tool} কমপ্লিট! এটা ডেমো ভার্সন")
-    bot.send_message(chat_id, msg)
+    bot.send_message(message.chat.id, msg)
 
 # ====== 4 Working Tools ======
-@bot.message_handler(func=lambda m: m.text == '🎨 Banner Creator')
+@bot.message_handler(func=lambda m: m.text == 'Banner Creator')
 def banner_start(message):
     chat_id = message.chat.id
     is_premium = message.from_user.id in PREMIUM_USERS
@@ -161,7 +145,7 @@ def handle_banner_state(message, state, chat_id, text):
         return True
     return False
 
-@bot.message_handler(func=lambda m: m.text == '🕌 Eid Rules')
+@bot.message_handler(func=lambda m: m.text == 'Eid Rules')
 def eid_rules(message):
     text = """🕌 **ঈদের নিয়ম-কানুন**
 1. ঈদের নামাজ: 2 রাকাত, 6 তাকবির
@@ -169,7 +153,7 @@ def eid_rules(message):
 3. ফিতরা: নামাজের আগে দিতে হবে"""
     bot.send_message(message.chat.id, text, parse_mode="Markdown")
 
-@bot.message_handler(func=lambda m: m.text == '🎭 Fun Zone')
+@bot.message_handler(func=lambda m: m.text == 'Fun Zone')
 def fun_zone(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add('😂 জোকস', '🎲 রিডল', '🔙 ব্যাক')
@@ -179,14 +163,14 @@ def fun_zone(message):
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'fun_menu')
 def fun_handler(message):
     if message.text == '😂 জোকস':
-        bot.send_message(message.chat.id, random.choice(["শিক্ষক: 2+2=? ছাত্র: 22 স্যার! 😂", "চোর: পুলিশ পেছনে! পুলিশ: আমিও তো চোর! 😂"]))
+        bot.send_message(message.chat.id, "শিক্ষক: 2+2=? ছাত্র: 22 স্যার! 😂")
     elif message.text == '🎲 রিডল':
         bot.send_message(message.chat.id, "4 পা আছে কিন্তু হাঁটতে পারি না। আমি কে?\nউত্তর: টেবিল")
     elif message.text == '🔙 ব্যাক':
         user_state[message.chat.id] = None
         start(message)
 
-@bot.message_handler(func=lambda m: m.text == '💌 Eid Greeting')
+@bot.message_handler(func=lambda m: m.text == 'Eid Greeting')
 def eid_greeting(message):
     bot.send_message(message.chat.id, "কার জন্য শুভেচ্ছা বানাবো? নাম লিখো:")
     user_state[message.chat.id] = 'greeting_name'
