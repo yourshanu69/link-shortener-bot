@@ -1,4 +1,6 @@
-pyTelegramBotAPI>=4.14.0
-Flask
-Pillow
+pyTelegramBotAPI
+flask
+pillow
+rembg
+reportlab
 requests
