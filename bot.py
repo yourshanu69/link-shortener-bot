@@ -1,3 +1,4 @@
+print("Script started")
 import random
 import telebot
 import random
