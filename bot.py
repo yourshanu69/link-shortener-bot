@@ -52,7 +52,7 @@ def start(message):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     buttons = list(tools_prompt.keys())
     markup.add(*[types.KeyboardButton(btn) for btn in buttons])
-    
+
     bot.send_message(chat_id, "🔥 **22টা টুল রেডি** 😎\nনিচ থেকে যেকোনো একটা সিলেক্ট করো 👇",
                      reply_markup=markup, parse_mode="Markdown")
     user_state[chat_id] = None
@@ -63,34 +63,46 @@ def handle_all(message):
     text = message.text if message.text else ""
     state = user_state.get(chat_id, None)
 
-    # FIX: কোনো টুল চলার মাঝে অন্য টুল চাপলে আগেরটা ক্যান্সেল হবে
-    if state and text in tools_prompt and text!= 'Banner Creator':
+    # 1. নতুন টুল চাপলে আগের প্রসেস ক্যান্সেল করো - এটা সবার আগে
+    if state and text in tools_prompt:
         user_state[chat_id] = None
         bot.send_message(chat_id, "আগের প্রসেস ক্যান্সেল হলো ✅")
 
-    # Banner এর শেষ স্টেপ হ্যান্ডেল
+    # 2. Banner এর শেষ স্টেপ হ্যান্ডেল
     if handle_banner_state(message, state, chat_id, text):
         return
 
+    # 3. Fun Zone আর Eid Greeting এর স্টেট হ্যান্ডেল
+    if state == 'fun_menu':
+        fun_handler(message)
+        return
+    if state == 'greeting_name':
+        greeting_name(message)
+        return
+
+    # 4. টুল হ্যান্ডেল করো
     if text in tools_prompt:
         user_state[chat_id] = f"wait_{text}"
         bot.send_message(chat_id, tools_prompt[text])
 
-        # 4টা ফুল টুল
         if text == 'Banner Creator':
             banner_start(message)
         elif text == 'Eid Rules':
             eid_rules(message)
+            user_state[chat_id] = None
         elif text == 'Fun Zone':
             fun_zone(message)
         elif text == 'Eid Greeting':
             eid_greeting(message)
         else:
-            # বাকি 18টার ডেমো রেসপন্স
             user_state[chat_id] = None
             run_fake_logic(message, text)
     else:
-        bot.send_message(chat_id, "মেনু থেকে একটা অপশন সিলেক্ট করো 👇")
+        # শুধু তখনই ব্লক করো যখন সত্যিই কোনো প্রসেস চলছে
+        if state and state not in ['wait_' + t for t in tools_prompt]:
+            bot.send_message(chat_id, "আগের প্রসেসটা শেষ করো 👆")
+        else:
+            bot.send_message(chat_id, "মেনু থেকে একটা অপশন সিলেক্ট করো 👇")
 
 def run_fake_logic(message, tool):
     txt = message.text
@@ -163,12 +175,13 @@ def fun_zone(message):
     bot.send_message(message.chat.id, "🎭 Fun Zone:", reply_markup=markup)
     user_state[message.chat.id] = 'fun_menu'
 
-@bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'fun_menu')
 def fun_handler(message):
     if message.text == '😂 জোকস':
         bot.send_message(message.chat.id, "শিক্ষক: 2+2=? ছাত্র: 22 স্যার! 😂")
+        user_state[message.chat.id] = None
     elif message.text == '🎲 রিডল':
         bot.send_message(message.chat.id, "4 পা আছে কিন্তু হাঁটতে পারি না। আমি কে?\nউত্তর: টেবিল")
+        user_state[message.chat.id] = None
     elif message.text == '🔙 ব্যাক':
         user_state[message.chat.id] = None
         start(message)
@@ -179,7 +192,6 @@ def eid_greeting(message):
     bot.send_message(message.chat.id, "কার জন্য শুভেচ্ছা বানাবো? নাম লিখো:")
     user_state[message.chat.id] = 'greeting_name'
 
-@bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'greeting_name')
 def greeting_name(message):
     bot.send_message(message.chat.id, f"🌙 {message.text}, ঈদ মোবারক! 🎉")
     user_state[message.chat.id] = None
