@@ -3,4 +3,4 @@ flask
 pillow
 rembg
 reportlab
-requests
+qrcode
