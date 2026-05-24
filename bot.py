@@ -329,4 +329,4 @@ def home():
 if __name__ == "__main__":
     # Thread(target=run_flask).start()
     print("Bot started polling")
-    bot.polling(none_stop=True)
+bot.polling(none_stop=True, drop_pending_updates=True)
