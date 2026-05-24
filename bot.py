@@ -61,6 +61,7 @@ def start(message):
 # ====== Banner Creator ======
 @bot.message_handler(func=lambda m: m.text == 'Banner Creator')
 def banner_start(message):
+    cancel_prev(message.chat.id)
     chat_id = message.chat.id
     is_premium = message.from_user.id in PREMIUM_USERS
     markup = types.InlineKeyboardMarkup(row_width=3)
@@ -98,6 +99,7 @@ def banner_addr(message):
 # ====== Eid Rules ======
 @bot.message_handler(func=lambda m: m.text == 'Eid Rules')
 def eid_rules(message):
+    cancel_prev(message.chat.id)
     text = """🕌 **ঈদের নিয়ম-কানুন**
 1. ঈদের নামাজ: 2 রাকাত, 6 তাকবির
 2. ফজরের পর গোসল, সুন্দর পোশাক
@@ -107,6 +109,7 @@ def eid_rules(message):
 # ====== Fun Zone ======
 @bot.message_handler(func=lambda m: m.text == 'Fun Zone')
 def fun_zone(message):
+    cancel_prev(message.chat.id)
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add('😂 জোকস', '🎲 রিডল', '🔙 ব্যাক')
     bot.send_message(message.chat.id, "🎭 Fun Zone:", reply_markup=markup)
@@ -127,6 +130,7 @@ def fun_handler(message):
 # ====== Eid Greeting ======
 @bot.message_handler(func=lambda m: m.text == 'Eid Greeting')
 def eid_greeting(message):
+    cancel_prev(message.chat.id)
     bot.send_message(message.chat.id, "কার জন্য শুভেচ্ছা বানাবো? নাম লিখো:")
     user_state[message.chat.id] = 'greeting_name'
 
@@ -134,6 +138,19 @@ def eid_greeting(message):
 def greeting_name(message):
     bot.send_message(message.chat.id, f"🌙 {message.text}, ঈদ মোবারক! 🎉")
     user_state[message.chat.id] = None
+
+# ====== Other Tools ======
+@bot.message_handler(func=lambda m: m.text in tools_prompt and m.text not in ['Banner Creator', 'Eid Rules', 'Fun Zone', 'Eid Greeting'])
+def handle_other_tools(message):
+    cancel_prev(message.chat.id)
+    text = message.text
+    bot.send_message(message.chat.id, tools_prompt[text])
+    run_fake_logic(message, text)
+
+def cancel_prev(chat_id):
+    if user_state.get(chat_id):
+        user_state[chat_id] = None
+        bot.send_message(chat_id, "আগের প্রসেস ক্যান্সেল হলো ✅")
 
 def run_fake_logic(message, tool):
     txt = message.text if message.text else ""
@@ -150,28 +167,12 @@ def run_fake_logic(message, tool):
     msg = responses.get(tool, f"✅ {tool} কমপ্লিট! এটা ডেমো ভার্সন")
     bot.send_message(message.chat.id, msg)
 
-# ====== CATCH-ALL - শুধু তখনই চলবে যখন কোনো স্টেট নাই ======
-@bot.message_handler(func=lambda m: user_state.get(m.chat.id) is None and m.text in tools_prompt, content_types=['text'])
-def handle_tool(message):
-    chat_id = message.chat.id
-    text = message.text
-
-    bot.send_message(chat_id, tools_prompt[text])
-
-    if text == 'Banner Creator':
-        banner_start(message)
-    elif text == 'Eid Rules':
-        eid_rules(message)
-    elif text == 'Fun Zone':
-        fun_zone(message)
-    elif text == 'Eid Greeting':
-        eid_greeting(message)
-    else:
-        run_fake_logic(message, text)
-
-@bot.message_handler(func=lambda m: user_state.get(m.chat.id) is None, content_types=['text', 'photo', 'document'])
+@bot.message_handler(func=lambda m: True, content_types=['text', 'photo', 'document'])
 def handle_default(message):
-    bot.send_message(message.chat.id, "মেনু থেকে একটা অপশন সিলেক্ট করো 👇")
+    if user_state.get(message.chat.id):
+        bot.send_message(message.chat.id, "প্রথমে কাজটা শেষ করো 👆 অথবা `/cancel` লিখো")
+    else:
+        bot.send_message(message.chat.id, "মেনু থেকে একটা অপশন সিলেক্ট করো 👇")
 
 def run_bot():
     bot.remove_webhook()
