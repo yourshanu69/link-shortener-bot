@@ -23,7 +23,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 user_state = {}
 user_files = {}
 
-PREMIUM_USERS = [123456789] # @userinfobot থেকে ID বসাও
+PREMIUM_USERS = [1692907487] # @userinfobot থেকে ID বসাও
 
 # ====== /start Menu ======
 @bot.message_handler(commands=['start'])
@@ -53,9 +53,15 @@ def start(message):
 def handle_all(message):
     chat_id = message.chat.id
     text = message.text if message.text else ""
+    state = user_state.get(chat_id, None)
 
     # Banner state handler first
-    if handle_banner_state(message, user_state.get(chat_id), chat_id, text):
+    if handle_banner_state(message, state, chat_id, text):
+        return
+
+    # যদি মাঝখানের কোনো স্টেট চলে, তাহলে টুল মেনু চেক করবে না
+    if state in ['banner_name', 'banner_addr', 'banner_photo', 'banner_tpl', 'fun_menu', 'greeting_name']:
+        bot.send_message(chat_id, "আগের প্রসেসটা শেষ করো 👆")
         return
 
     # 32 Tools
