@@ -327,5 +327,6 @@ def home():
     return "Bot is running"
 
 if __name__ == "__main__":
-    Thread(target=lambda: bot.polling(none_stop=True)).start()
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
+    # Thread(target=run_flask).start()
+    print("Bot started polling")
+    bot.polling(none_stop=True)
