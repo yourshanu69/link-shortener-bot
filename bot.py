@@ -21,7 +21,6 @@ bot = telebot.TeleBot(BOT_TOKEN)
 user_state = {}
 PREMIUM_USERS = [1692907487]
 
-# 1. আগে tools_prompt ডিফাইন করো
 tools_prompt = {
     'Banner Creator': "শুরু হচ্ছে...",
     'FF Diamond': "🎮 UID দাও",
@@ -51,8 +50,6 @@ tools_prompt = {
 def start(message):
     chat_id = message.chat.id
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    
-    # 2. বাটন লেবেল স্ক্রিনশটের সাথে মিলাও - ইমোজি ছাড়া
     buttons = list(tools_prompt.keys())
     markup.add(*[types.KeyboardButton(btn) for btn in buttons])
     
@@ -66,16 +63,20 @@ def handle_all(message):
     text = message.text if message.text else ""
     state = user_state.get(chat_id, None)
 
+    # FIX: কোনো টুল চলার মাঝে অন্য টুল চাপলে আগেরটা ক্যান্সেল হবে
+    if state and text in tools_prompt and text!= 'Banner Creator':
+        user_state[chat_id] = None
+        bot.send_message(chat_id, "আগের প্রসেস ক্যান্সেল হলো ✅")
+
+    # Banner এর শেষ স্টেপ হ্যান্ডেল
     if handle_banner_state(message, state, chat_id, text):
-        return
-    if state in ['banner_name', 'banner_addr', 'banner_photo', 'banner_tpl']:
-        bot.send_message(chat_id, "আগের প্রসেসটা শেষ করো 👆")
         return
 
     if text in tools_prompt:
         user_state[chat_id] = f"wait_{text}"
         bot.send_message(chat_id, tools_prompt[text])
 
+        # 4টা ফুল টুল
         if text == 'Banner Creator':
             banner_start(message)
         elif text == 'Eid Rules':
@@ -106,7 +107,7 @@ def run_fake_logic(message, tool):
     msg = responses.get(tool, f"✅ {tool} কমপ্লিট! এটা ডেমো ভার্সন")
     bot.send_message(message.chat.id, msg)
 
-# ====== 4 Working Tools ======
+# ====== Banner Creator ======
 @bot.message_handler(func=lambda m: m.text == 'Banner Creator')
 def banner_start(message):
     chat_id = message.chat.id
@@ -145,6 +146,7 @@ def handle_banner_state(message, state, chat_id, text):
         return True
     return False
 
+# ====== Eid Rules ======
 @bot.message_handler(func=lambda m: m.text == 'Eid Rules')
 def eid_rules(message):
     text = """🕌 **ঈদের নিয়ম-কানুন**
@@ -153,6 +155,7 @@ def eid_rules(message):
 3. ফিতরা: নামাজের আগে দিতে হবে"""
     bot.send_message(message.chat.id, text, parse_mode="Markdown")
 
+# ====== Fun Zone ======
 @bot.message_handler(func=lambda m: m.text == 'Fun Zone')
 def fun_zone(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -170,6 +173,7 @@ def fun_handler(message):
         user_state[message.chat.id] = None
         start(message)
 
+# ====== Eid Greeting ======
 @bot.message_handler(func=lambda m: m.text == 'Eid Greeting')
 def eid_greeting(message):
     bot.send_message(message.chat.id, "কার জন্য শুভেচ্ছা বানাবো? নাম লিখো:")
