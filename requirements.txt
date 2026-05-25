@@ -1,6 +1,5 @@
 pyTelegramBotAPI
 flask
 pillow
-rembg
 reportlab
 qrcode
