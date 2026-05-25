@@ -1,5 +1,6 @@
 pyTelegramBotAPI
-flask
-pillow
+Pillow
+Flask
+requests
 reportlab
-qrcode
+qrcode[pil]
