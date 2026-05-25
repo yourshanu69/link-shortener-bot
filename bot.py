@@ -120,7 +120,7 @@ def banner_generate(message):
         draw.text((200, 400), "ঈদ", font=font_big, fill=(220, 20, 60), anchor="mm")
         draw.text((200, 480), "মোবারক", font=font_big, fill=(30, 144, 255), anchor="mm")
 
-        photo = Image.open(BytesIO(data['photo'])).resize((400, 400))
+        photo = Image.open(BytesIO(data['photo'])).convert('RGB').resize((400, 400))
         mask = Image.new('L', (400, 400), 0)
         ImageDraw.Draw(mask).ellipse((0, 0, 400, 400), fill=255)
         img.paste(photo, (340, 750), mask)
