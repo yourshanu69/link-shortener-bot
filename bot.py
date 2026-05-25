@@ -7,6 +7,7 @@ import telebot
 from telebot import types
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
+import requests
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 import qrcode
