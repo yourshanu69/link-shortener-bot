@@ -62,41 +62,96 @@ def cancel_prev(chat_id):
 @bot.message_handler(func=lambda m: 'Banner' in m.text)
 def banner_start(message):
     cancel_prev(message.chat.id)
-    markup = types.InlineKeyboardMarkup(row_width=3)
-    buttons = [types.InlineKeyboardButton(f"T{i}", callback_data=f"tpl_{i}") for i in range(1, 4)]
-    markup.add(*buttons)
-    user_state[message.chat.id] = 'banner_tpl'
-    bot.send_message(message.chat.id, "🎨 3টা টেমপ্লেট থেকে সিলেক্ট করো:", reply_markup=markup)
+    user_state[message.chat.id] = {'state': 'banner_photo'}
+    bot.send_message(message.chat.id, "📷 প্রথমে তোমার ছবিটা পাঠাও")
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('tpl_'))
-def banner_tpl_select(call):
-    user_state[call.message.chat.id] = {'state': 'banner_name', 'tpl': call.data.split('_')[1]}
-    bot.edit_message_text("✅ টেমপ্লেট সিলেক্ট হলো\nএখন নাম লিখো:", call.message.chat.id, call.message.id)
+@bot.message_handler(func=lambda m: isinstance(user_state.get(m.chat.id), dict) and user_state[m.chat.id].get('state') == 'banner_photo', content_types=['photo'])
+def banner_photo(message):
+    try:
+        file_info = bot.get_file(message.photo[-1].file_id)
+        downloaded = bot.download_file(file_info.file_path)
+        user_state[message.chat.id]['photo'] = downloaded
+        user_state[message.chat.id]['state'] = 'banner_name'
+        bot.send_message(message.chat.id, "✅ ছবি পেলাম\nএখন তোমার নাম লিখো")
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ ছবি নিতে সমস্যা: {e}")
+        user_state[message.chat.id] = None
 
 @bot.message_handler(func=lambda m: isinstance(user_state.get(m.chat.id), dict) and user_state[m.chat.id].get('state') == 'banner_name')
 def banner_name(message):
     user_state[message.chat.id]['name'] = message.text
-    user_state[message.chat.id]['state'] = 'banner_addr'
-    bot.send_message(message.chat.id, "ঠিকানা লিখো:")
+    user_state[message.chat.id]['state'] = 'banner_location'
+    bot.send_message(message.chat.id, "📍 এখন এলাকার নাম লিখো। যেমন: ডৈব")
 
-@bot.message_handler(func=lambda m: isinstance(user_state.get(m.chat.id), dict) and user_state[m.chat.id].get('state') == 'banner_addr')
-def banner_addr(message):
+@bot.message_handler(func=lambda m: isinstance(user_state.get(m.chat.id), dict) and user_state[m.chat.id].get('state') == 'banner_location')
+def banner_generate(message):
     data = user_state[message.chat.id]
+    data['location'] = message.text
+    
     try:
-        img = Image.new('RGB', (1080, 1350), color=(25, 25, 112))
+        # Bangla ফন্ট অটো ডাউনলোড
+        font_path = "/tmp/NotoSansBengali.ttf"
+        if not os.path.exists(font_path):
+            font_url = "https://github.com/google/fonts/raw/main/ofl/notosansbengali/NotoSansBengali-Regular.ttf"
+            r = requests.get(font_url)
+            with open(font_path, "wb") as f:
+                f.write(r.content)
+        
+        # ইমেজ বানানো
+        img = Image.new('RGB', (1080, 1920), color=(230, 250, 240))
         draw = ImageDraw.Draw(img)
-        font = ImageFont.load_default()
-        draw.text((540, 500), data['name'], font=font, fill=(255, 215, 0), anchor="mm")
-        draw.text((540, 650), message.text, font=font, fill=(255, 255, 255), anchor="mm")
+        
+        # ফন্ট লোড
+        font_big = ImageFont.truetype(font_path, 75)
+        font_med = ImageFont.truetype(font_path, 55)
+        font_small = ImageFont.truetype(font_path, 45)
+        
+        # ব্যাকগ্রাউন্ড ডিজাইন
+        draw.rectangle([0, 1200, 1080, 1920], fill=(210, 240, 225))
+        draw.rounded_rectangle([40, 40, 1040, 300], radius=40, fill=(0, 128, 0))
+        
+        # উপরের টেক্সট
+        draw.text((540, 120), f"{data['location']}বাসীকে", font=font_big, fill="white", anchor="mm")
+        draw.text((540, 200), "পবিত্র ঈদুল ফিতরের", font=font_big, fill="yellow", anchor="mm")
+        draw.text((540, 270), "শুভেচ্ছা", font=font_big, fill="white", anchor="mm")
+        
+        # বাম পাশ
+        draw.text((200, 400), "ঈদ", font=font_big, fill=(220, 20, 60), anchor="mm")
+        draw.text((200, 480), "মোবারক", font=font_big, fill=(30, 144, 255), anchor="mm")
+        draw.text((200, 560), "ঈদ বয়ে আনুক", font=font_small, fill="black", anchor="mm")
+        draw.text((200, 610), "শান্তি ও সমৃদ্ধি", font=font_small, fill="black", anchor="mm")
+        
+        # ইউজারের ছবি গোল করে বসানো
+        photo = Image.open(BytesIO(data['photo'])).resize((400, 400))
+        mask = Image.new('L', (400, 400), 0)
+        ImageDraw.Draw(mask).ellipse((0, 0, 400, 400), fill=255)
+        img.paste(photo, (340, 750), mask)
+        
+        # ডান পাশ
+        draw.text((750, 1200), "আনন্দময়", font=font_big, fill=(34, 139, 34), anchor="mm")
+        draw.text((750, 1280), "ঈদ", font=font_big, fill=(220, 20, 60), anchor="mm")
+        
+        # নিচের সবুজ বক্স
+        draw.rounded_rectangle([40, 1600, 1040, 1720], radius=40, fill=(0, 128, 0))
+        draw.text((540, 1660), f"[{data['name']}]", font=font_big, fill="white", anchor="mm")
+        
+        # নিচের হলুদ বার
+        draw.rectangle([0, 1750, 1080, 1920], fill=(255, 215, 0))
+        draw.text((540, 1835), f"[{data['location']}]", font=font_big, fill="black", anchor="mm")
+        
+        # ওয়াটারমার্ক
         if message.from_user.id not in PREMIUM_USERS:
-            draw.text((540, 1300), "Shanu's Magic Bot", font=font, fill=(150, 150, 150), anchor="mm")
+            draw.text((540, 1880), "Shanu's Magic Bot", font=font_small, fill=(100, 100, 100), anchor="mm")
+        
+        # সেন্ড
         buf = BytesIO()
         img.save(buf, format='PNG')
         buf.seek(0)
-        bot.send_photo(message.chat.id, buf, caption="✅ ব্যানার রেডি!")
+        bot.send_photo(message.chat.id, buf, caption="✅ তোমার Eid Banner রেডি! 🔥")
         user_state[message.chat.id] = None
+        
     except Exception as e:
-        bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
+        bot.send_message(message.chat.id, f"❌ এরর: {str(e)}\nআবার ট্রাই করো")
         user_state[message.chat.id] = None
 
 # 2. Eid Rules
