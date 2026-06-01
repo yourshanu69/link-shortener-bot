@@ -125,21 +125,22 @@ def txt_pdf_start(message):
 
 from reportlab.lib.utils import simpleSplit
 
+FONT_PATH = download_font()
+
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'txt_pdf')
 def txt_pdf_process(message):
     try:
-        pdfmetrics.registerFont(TTFont('Bengali', 'DejaVuSans.ttf'))
+        # DejaVuSans.ttf এর বদলে FONT_PATH ইউজ করো
+        pdfmetrics.registerFont(TTFont('Bengali', FONT_PATH))
         c = canvas.Canvas("/tmp/text.pdf", pagesize=A4)
         width, height = A4
         c.setFont('Bengali', 14)
         
         y = height - 50
-        max_width = width - 100  # বাম-ডান 50 করে মার্জিন
+        max_width = width - 100
         
         for line in message.text.split('\n'):
-            # লম্বা লাইন হলে অটো ভেঙে দিবে
             wrapped_lines = simpleSplit(line, 'Bengali', 14, max_width)
-            
             for wrapped in wrapped_lines:
                 c.drawString(50, y, wrapped)
                 y -= 25
@@ -157,7 +158,6 @@ def txt_pdf_process(message):
         
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
-        
 # 3. Image → PDF
 @bot.message_handler(func=lambda m: m.text == "📄 ছবি → PDF")
 def pdf_start(message):
