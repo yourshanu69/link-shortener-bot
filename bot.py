@@ -126,10 +126,10 @@ def txt_pdf_start(message):
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'txt_pdf')
 def txt_pdf_process(message):
     try:
-        pdfmetrics.registerFont(TTFont('DejaVu', 'DejaVuSans.ttf'))
+        pdfmetrics.registerFont(TTFont('Bengali', 'NotoSansBengali-Regular.ttf'))
         c = canvas.Canvas("/tmp/text.pdf", pagesize=A4)
         width, height = A4
-        c.setFont('DejaVu', 14)
+        c.setFont('Bengali', 14)
         
         y = height - 50
         for line in message.text.split('\n'):
@@ -137,7 +137,7 @@ def txt_pdf_process(message):
             y -= 25
             if y < 50:
                 c.showPage()
-                c.setFont('DejaVu', 14)
+                c.setFont('Bengali', 14)
                 y = height - 50
         c.save()
         
@@ -145,9 +145,9 @@ def txt_pdf_process(message):
             bot.send_document(message.chat.id, f, caption="✅ PDF রেডি!")
         user_state[message.chat.id] = None
         
-    except Exception as e:  # এই লাইনটা 'try' এর সমান লেভেলে থাকবে
+    except Exception as e:
         bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
-        user_state[message.chat.id] = None
+    
     
 # 3. Image → PDF
 @bot.message_handler(func=lambda m: m.text == "📄 ছবি → PDF")
