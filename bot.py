@@ -123,26 +123,31 @@ def txt_pdf_start(message):
     user_state[message.chat.id] = 'txt_pdf'
     bot.send_message(message.chat.id, "📝 PDF এ যেটা লিখতে চাও সেটা পাঠাও\nবাংলা + ইংলিশ দুইটাই লিখতে পারবা")
 
+from reportlab.lib.utils import simpleSplit
+
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'txt_pdf')
 def txt_pdf_process(message):
     try:
-        # DejaVuSans.ttf রেজিস্টার করো subfont=True দিয়ে
-        pdfmetrics.registerFont(TTFont('Bengali', 'DejaVuSans.ttf', subfont=True))
+        pdfmetrics.registerFont(TTFont('Bengali', 'DejaVuSans.ttf'))
         c = canvas.Canvas("/tmp/text.pdf", pagesize=A4)
         width, height = A4
         c.setFont('Bengali', 14)
         
         y = height - 50
-        for line in message.text.split('\n'):
-            # Unicode স্ট্রিং হিসেবে লিখো
-            c.drawString(50, y, line)
-            y -= 25
-            if y < 50:
-                c.showPage()
-                c.setFont('Bengali', 14)
-                y = height - 50
+        max_width = width - 100  # বাম-ডান 50 করে মার্জিন
         
-        # PDF এ ফন্ট এম্বেড করতে এই লাইনটা জরুরি
+        for line in message.text.split('\n'):
+            # লম্বা লাইন হলে অটো ভেঙে দিবে
+            wrapped_lines = simpleSplit(line, 'Bengali', 14, max_width)
+            
+            for wrapped in wrapped_lines:
+                c.drawString(50, y, wrapped)
+                y -= 25
+                if y < 50:
+                    c.showPage()
+                    c.setFont('Bengali', 14)
+                    y = height - 50
+        
         c.setPageCompression(0)
         c.save()
         
