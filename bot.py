@@ -24,6 +24,8 @@ bot = telebot.TeleBot(BOT_TOKEN)
 user_state = {}
 
 # ফন্ট ফিক্সড ভার্সন - বাংলা + ইংলিশ দুইটাই সাপোর্ট করে
+# ইংলিশ ফন্ট রেজিস্টার
+pdfmetrics.registerFont(TTFont('DejaVu', 'DejaVuSans.ttf'))
 def download_font():
     font_path = "/tmp/NotoSansBengali.ttf"
     if os.path.exists(font_path) and os.path.getsize(font_path) < 100000:
@@ -124,17 +126,17 @@ def txt_pdf_start(message):
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'txt_pdf')
 def txt_pdf_process(message):
     try:
-        pdfmetrics.registerFont(TTFont('Bengali', FONT_PATH))
+        pdfmetrics.registerFont(TTFont('DejaVu', 'DejaVuSans.ttf'))
         c = canvas.Canvas("/tmp/text.pdf", pagesize=A4)
         width, height = A4
-        c.setFont('Bengali', 14)
+c.setFont('DejaVu', 14)  # Bengali এর জায়গায় DejaVu করো)
         y = height - 50
         for line in message.text.split('\n'):
             c.drawString(50, y, line)
             y -= 25
             if y < 50:
                 c.showPage()
-                c.setFont('Bengali', 14)
+                c.setFont('DejaVu', 14)
                 y = height - 50
         c.save()
         with open('/tmp/text.pdf', 'rb') as f:
