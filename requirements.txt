@@ -4,4 +4,4 @@ Pillow
 requests
 qrcode
 reportlab
-edge-tts
+edge-tts==6.1.9
