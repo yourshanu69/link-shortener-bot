@@ -126,21 +126,24 @@ def txt_pdf_start(message):
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'txt_pdf')
 def txt_pdf_process(message):
     try:
-        # DejaVuSans.ttf ইউজ করো - বাংলা + ইংলিশ দুইটাই সাপোর্ট করে
-        pdfmetrics.registerFont(TTFont('Bengali', 'DejaVuSans.ttf'))
+        # DejaVuSans.ttf রেজিস্টার করো subfont=True দিয়ে
+        pdfmetrics.registerFont(TTFont('Bengali', 'DejaVuSans.ttf', subfont=True))
         c = canvas.Canvas("/tmp/text.pdf", pagesize=A4)
         width, height = A4
         c.setFont('Bengali', 14)
         
         y = height - 50
         for line in message.text.split('\n'):
-            # UTF-8 এনকোডিং নিশ্চিত করো
-            c.drawString(50, y, line.encode('utf-8').decode('utf-8'))
+            # Unicode স্ট্রিং হিসেবে লিখো
+            c.drawString(50, y, line)
             y -= 25
             if y < 50:
                 c.showPage()
-                c.setFont('Bengali', 14)  # নতুন পেজে আবার ফন্ট সেট করো
+                c.setFont('Bengali', 14)
                 y = height - 50
+        
+        # PDF এ ফন্ট এম্বেড করতে এই লাইনটা জরুরি
+        c.setPageCompression(0)
         c.save()
         
         with open('/tmp/text.pdf', 'rb') as f:
@@ -149,7 +152,7 @@ def txt_pdf_process(message):
         
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
-    
+        
 # 3. Image → PDF
 @bot.message_handler(func=lambda m: m.text == "📄 ছবি → PDF")
 def pdf_start(message):
