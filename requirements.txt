@@ -1,7 +1,7 @@
 pyTelegramBotAPI
-Pillow
 Flask
+Pillow
 requests
+qrcode
 reportlab
-qrcode[pil]
-pillow-heif
+edge-tts
