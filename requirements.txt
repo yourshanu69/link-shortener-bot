@@ -5,3 +5,4 @@ requests
 qrcode
 reportlab
 edge-tts==6.1.9
+reportlab
