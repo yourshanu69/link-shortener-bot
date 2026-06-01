@@ -1,9 +1,7 @@
 import os
 import random
 import datetime
-import time
-from threading import Thread
-from flask import Flask
+from flask import Flask, request
 import telebot
 from telebot import types
 from io import BytesIO
@@ -17,33 +15,23 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return "Shanu's Magic Bot v5 - 15 Tools 🔥"
-
 BOT_TOKEN = os.environ.get('BOT_TOKEN')
-bot = telebot.TeleBot(BOT_TOKEN, threaded=True, skip_pending=True)
+RENDER_URL = os.environ.get('RENDER_URL')
+
+bot = telebot.TeleBot(BOT_TOKEN)
 user_state = {}
 
-# ফন্ট ফিক্সড ভার্সন
+# ফন্ট ফিক্সড ভার্সন - বাংলা + ইংলিশ দুইটাই সাপোর্ট করে
 def download_font():
     font_path = "/tmp/NotoSansBengali.ttf"
-
-    # যদি ফাইল corrupted হয়, ডিলিট করো
-    if os.path.exists(font_path):
-        if os.path.getsize(font_path) < 100000:
-            os.remove(font_path)
-
-    # ফাইল না থাকলে ডাউনলোড করো
+    if os.path.exists(font_path) and os.path.getsize(font_path) < 100000:
+        os.remove(font_path)
     if not os.path.exists(font_path):
         url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansBengali/NotoSansBengali-Regular.ttf"
         r = requests.get(url, timeout=20)
         if r.status_code == 200:
             with open(font_path, "wb") as f:
                 f.write(r.content)
-        else:
-            raise Exception(f"Font download failed: {r.status_code}")
-
     return font_path
 
 FONT_PATH = download_font()
@@ -65,6 +53,17 @@ tools = {
     'weather': "🌤️ Weather",
     'bright': "☀️ ব্রাইটনেস"
 }
+
+@app.route('/', methods=['GET'])
+def home():
+    return "Shanu's Magic Bot v5 - 15 Tools 🔥"
+
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    json_str = request.get_data().decode('UTF-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "ok", 200
 
 @bot.message_handler(commands=['start'])
 def start(message):
@@ -111,21 +110,23 @@ def fun_handler(message):
         start(message)
     user_state[message.chat.id] = None
 
-# 2. Text → PDF
+# 2. Text → PDF - English + Bangla সাপোর্টেড
 @bot.message_handler(func=lambda m: m.text == "📝 টেক্সট → PDF")
 def txt_pdf_start(message):
     cancel_prev(message.chat.id)
     user_state[message.chat.id] = 'txt_pdf'
-    bot.send_message(message.chat.id, "📝 PDF এ যেটা লিখতে চাও সেটা পাঠাও")
+    bot.send_message(message.chat.id, "📝 PDF এ যেটা লিখতে চাও সেটা পাঠাও\nবাংলা + ইংলিশ দুইটাই লিখতে পারবা")
 
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'txt_pdf')
 def txt_pdf_process(message):
     try:
         pdfmetrics.registerFont(TTFont('Bengali', FONT_PATH))
+
         c = canvas.Canvas("/tmp/text.pdf", pagesize=A4)
         width, height = A4
         c.setFont('Bengali', 14)
         y = height - 50
+
         for line in message.text.split('\n'):
             c.drawString(50, y, line)
             y -= 25
@@ -134,6 +135,7 @@ def txt_pdf_process(message):
                 c.setFont('Bengali', 14)
                 y = height - 50
         c.save()
+
         with open('/tmp/text.pdf', 'rb') as f:
             bot.send_document(message.chat.id, f, caption="✅ PDF রেডি!")
         user_state[message.chat.id] = None
@@ -428,16 +430,8 @@ def default_handler(message):
     else:
         bot.send_message(message.chat.id, "মেনু থেকে অপশন সিলেক্ট করো 👇")
 
-def run_bot():
-    try:
-        bot.remove_webhook()
-        time.sleep(2)
-        print("Bot polling started")
-        bot.infinity_polling(timeout=60, long_polling_timeout=50)
-    except Exception as e:
-        print(f"Polling error: {e}")
-
 if __name__ == "__main__":
-    Thread(target=run_bot, daemon=True).start()
+    bot.remove_webhook()
+    bot.set_webhook(url=f"{RENDER_URL}/webhook")
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
