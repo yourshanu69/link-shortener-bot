@@ -116,7 +116,7 @@ def fun_handler(message):
         start(message)
     user_state[message.chat.id] = None
 
-# 2. Text → PDF - English + Bangla সাপোর্টেড
+# 2. # 2. Text → PDF - English + Bangla সাপোর্টেড
 @bot.message_handler(func=lambda m: m.text == "📝 টেক্সট → PDF")
 def txt_pdf_start(message):
     cancel_prev(message.chat.id)
@@ -126,18 +126,20 @@ def txt_pdf_start(message):
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'txt_pdf')
 def txt_pdf_process(message):
     try:
-        pdfmetrics.registerFont(TTFont('Bengali', 'NotoSansBengali-Regular.ttf'))
+        # DejaVuSans.ttf ইউজ করো - বাংলা + ইংলিশ দুইটাই সাপোর্ট করে
+        pdfmetrics.registerFont(TTFont('Bengali', 'DejaVuSans.ttf'))
         c = canvas.Canvas("/tmp/text.pdf", pagesize=A4)
         width, height = A4
         c.setFont('Bengali', 14)
         
         y = height - 50
         for line in message.text.split('\n'):
-            c.drawString(50, y, line)
+            # UTF-8 এনকোডিং নিশ্চিত করো
+            c.drawString(50, y, line.encode('utf-8').decode('utf-8'))
             y -= 25
             if y < 50:
                 c.showPage()
-                c.setFont('Bengali', 14)
+                c.setFont('Bengali', 14)  # নতুন পেজে আবার ফন্ট সেট করো
                 y = height - 50
         c.save()
         
@@ -147,7 +149,6 @@ def txt_pdf_process(message):
         
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
-    
     
 # 3. Image → PDF
 @bot.message_handler(func=lambda m: m.text == "📄 ছবি → PDF")
