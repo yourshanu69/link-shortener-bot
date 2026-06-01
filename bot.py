@@ -1,6 +1,7 @@
 import os
 import random
 import datetime
+import asyncio
 from flask import Flask, request
 import telebot
 from telebot import types
@@ -12,6 +13,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+import edge_tts
 
 app = Flask(__name__)
 
@@ -51,12 +53,14 @@ tools = {
     'removebg': "✂️ BG রিমুভ",
     'ip': "🌐 IP Lookup",
     'weather': "🌤️ Weather",
-    'bright': "☀️ ব্রাইটনেস"
+    'bright': "☀️ ব্রাইটনেস",
+    'female_tts': "🎤 BD Female Voice",
+    'male_tts': "🎤 BD Male Voice"
 }
 
 @app.route('/', methods=['GET'])
 def home():
-    return "Shanu's Magic Bot v5 - 15 Tools 🔥"
+    return "Shanu's Magic Bot v6 - 17 Tools 🔥"
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -71,8 +75,8 @@ def start(message):
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
     markup.add(*[types.KeyboardButton(btn) for btn in tools.values()])
     bot.send_message(message.chat.id,
-                     "🔥 **Shanu's Magic Bot v5**\n\n"
-                     "15টা ভাইরাল টুল রেডি। সব ফ্রি + ফাস্ট\n"
+                     "🔥 **Shanu's Magic Bot v6**\n\n"
+                     "17টা ভাইরাল টুল রেডি। সব ফ্রি + ফাস্ট\n"
                      "`/cancel` দিয়ে বাতিল করো",
                      reply_markup=markup, parse_mode="Markdown")
 
@@ -121,12 +125,10 @@ def txt_pdf_start(message):
 def txt_pdf_process(message):
     try:
         pdfmetrics.registerFont(TTFont('Bengali', FONT_PATH))
-
         c = canvas.Canvas("/tmp/text.pdf", pagesize=A4)
         width, height = A4
         c.setFont('Bengali', 14)
         y = height - 50
-
         for line in message.text.split('\n'):
             c.drawString(50, y, line)
             y -= 25
@@ -135,7 +137,6 @@ def txt_pdf_process(message):
                 c.setFont('Bengali', 14)
                 y = height - 50
         c.save()
-
         with open('/tmp/text.pdf', 'rb') as f:
             bot.send_document(message.chat.id, f, caption="✅ PDF রেডি!")
         user_state[message.chat.id] = None
@@ -419,6 +420,46 @@ def bright_process(message):
         img.save(buf, format='PNG')
         buf.seek(0)
         bot.send_photo(message.chat.id, buf, caption="✅ ব্রাইটনেস বাড়ানো হলো!")
+        user_state[message.chat.id] = None
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
+
+# 16. BD Female Voice TTS
+@bot.message_handler(func=lambda m: m.text == "🎤 BD Female Voice")
+def female_voice_start(message):
+    cancel_prev(message.chat.id)
+    user_state[message.chat.id] = 'female_tts'
+    bot.send_message(message.chat.id, "🎤 টেক্সট লিখো, বাংলাদেশী ফিমেল ভয়েসে বলবো")
+
+@bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'female_tts')
+def female_voice_process(message):
+    try:
+        async def tts():
+            communicate = edge_tts.Communicate(message.text, "bn-BD-NadiaNeural")
+            await communicate.save("/tmp/female.mp3")
+        asyncio.run(tts())
+        with open("/tmp/female.mp3", "rb") as f:
+            bot.send_audio(message.chat.id, f, caption="✅ BD Female Voice রেডি!")
+        user_state[message.chat.id] = None
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
+
+# 17. BD Male Voice TTS
+@bot.message_handler(func=lambda m: m.text == "🎤 BD Male Voice")
+def male_voice_start(message):
+    cancel_prev(message.chat.id)
+    user_state[message.chat.id] = 'male_tts'
+    bot.send_message(message.chat.id, "🎤 টেক্সট লিখো, বাংলাদেশী মেল ভয়েসে বলবো")
+
+@bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'male_tts')
+def male_voice_process(message):
+    try:
+        async def tts():
+            communicate = edge_tts.Communicate(message.text, "bn-BD-PradeepNeural")
+            await communicate.save("/tmp/male.mp3")
+        asyncio.run(tts())
+        with open("/tmp/male.mp3", "rb") as f:
+            bot.send_audio(message.chat.id, f, caption="✅ BD Male Voice রেডি!")
         user_state[message.chat.id] = None
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
