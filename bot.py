@@ -1,6 +1,7 @@
 import os
 import random
 import datetime
+import time
 from threading import Thread
 from flask import Flask
 import telebot
@@ -24,13 +25,25 @@ BOT_TOKEN = os.environ.get('BOT_TOKEN')
 bot = telebot.TeleBot(BOT_TOKEN, threaded=True, skip_pending=True)
 user_state = {}
 
-# ফন্ট একবারই ডাউনলোড হবে
+# ফন্ট ফিক্সড ভার্সন
 def download_font():
     font_path = "/tmp/NotoSansBengali.ttf"
+
+    # যদি ফাইল corrupted হয়, ডিলিট করো
+    if os.path.exists(font_path):
+        if os.path.getsize(font_path) < 100000:
+            os.remove(font_path)
+
+    # ফাইল না থাকলে ডাউনলোড করো
     if not os.path.exists(font_path):
-        r = requests.get("https://github.com/google/fonts/raw/main/ofl/notosansbengali/NotoSansBengali-Regular.ttf", timeout=10)
-        with open(font_path, "wb") as f:
-            f.write(r.content)
+        url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansBengali/NotoSansBengali-Regular.ttf"
+        r = requests.get(url, timeout=20)
+        if r.status_code == 200:
+            with open(font_path, "wb") as f:
+                f.write(r.content)
+        else:
+            raise Exception(f"Font download failed: {r.status_code}")
+
     return font_path
 
 FONT_PATH = download_font()
@@ -416,9 +429,13 @@ def default_handler(message):
         bot.send_message(message.chat.id, "মেনু থেকে অপশন সিলেক্ট করো 👇")
 
 def run_bot():
-    bot.remove_webhook()
-    print("Bot polling started")
-    bot.infinity_polling(timeout=60, long_polling_timeout=50)
+    try:
+        bot.remove_webhook()
+        time.sleep(2)
+        print("Bot polling started")
+        bot.infinity_polling(timeout=60, long_polling_timeout=50)
+    except Exception as e:
+        print(f"Polling error: {e}")
 
 if __name__ == "__main__":
     Thread(target=run_bot, daemon=True).start()
