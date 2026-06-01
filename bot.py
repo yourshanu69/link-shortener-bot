@@ -129,7 +129,8 @@ def txt_pdf_process(message):
         pdfmetrics.registerFont(TTFont('DejaVu', 'DejaVuSans.ttf'))
         c = canvas.Canvas("/tmp/text.pdf", pagesize=A4)
         width, height = A4
-c.setFont('DejaVu', 14)  # Bengali এর জায়গায় DejaVu করো)
+        c.setFont('DejaVu', 14)
+        
         y = height - 50
         for line in message.text.split('\n'):
             c.drawString(50, y, line)
@@ -139,12 +140,15 @@ c.setFont('DejaVu', 14)  # Bengali এর জায়গায় DejaVu করো)
                 c.setFont('DejaVu', 14)
                 y = height - 50
         c.save()
+        
         with open('/tmp/text.pdf', 'rb') as f:
             bot.send_document(message.chat.id, f, caption="✅ PDF রেডি!")
         user_state[message.chat.id] = None
-    except Exception as e:
+        
+    except Exception as e:  # এই লাইনটা 'try' এর সমান লেভেলে থাকবে
         bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
-
+        user_state[message.chat.id] = None
+    
 # 3. Image → PDF
 @bot.message_handler(func=lambda m: m.text == "📄 ছবি → PDF")
 def pdf_start(message):
