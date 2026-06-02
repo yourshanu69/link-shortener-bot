@@ -6,3 +6,4 @@ qrcode
 reportlab
 edge-tts==6.1.9
 reportlab
+googletrans==4.0.0-rc1
