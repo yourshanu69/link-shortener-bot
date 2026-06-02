@@ -90,23 +90,40 @@ def webhook():
 @bot.message_handler(commands=['start'])
 def start(message):
     user_state[message.chat.id] = None
-    markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add(*[types.KeyboardButton(btn) for btn in tools.values()])
-    bot.send_message(message.chat.id,
-                     "🔥 **Shanu's Magic Bot v6**\n\n"
-                     "17টা ভাইরাল টুল রেডি। সব ফ্রি + ফাস্ট\n"
-                     "`/cancel` দিয়ে বাতিল করো",
-                     reply_markup=markup, parse_mode="Markdown")
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    
+    # তোমার আগের 17টা বাটন এখানে থাকবে
+    btn1 = types.KeyboardButton("📊 Word Counter")
+    btn2 = types.KeyboardButton("🔤 Case Converter")
+    btn3 = types.KeyboardButton("🔢 Number Converter")
+    # ... তোমার বাকি 14টা বাটন এভাবে লিখো ...
+    
+    # নতুন 18 নাম্বার বাটন - এটা অ্যাড করো
+    btn_word = types.KeyboardButton("📚 Spoken Word")
+    
+    # বাটনগুলা গ্রিডে সাজাও
+    markup.add(btn1, btn2)
+    markup.add(btn3)  # তোমার মতো করে সাজাও
+    markup.add(btn_word)  # লাস্টে নতুন বাটন
+    
+    bot.send_message(message.chat.id, 
+        "🔥 Shanu's Magic Bot v6\n18টা ভাইরাল টুল রেডি। সব ফ্রি + ফাস্ট\n/cancel দিয়ে বাতিল করো",
+        reply_markup=markup)
 
-@bot.message_handler(commands=['cancel'])
-def cancel(message):
-    cancel_prev(message.chat.id)
+# বাটনে ক্লিক করলে এই ফাংশন রান হবে - নতুন
+@bot.message_handler(func=lambda m: m.text == "📚 Spoken Word")
+def word_button_handler(message):
+    send_word(message)
 
-def cancel_prev(chat_id):
-    if user_state.get(chat_id):
-        user_state[chat_id] = None
-        bot.send_message(chat_id, "ক্যান্সেল হলো ✅")
-
+@bot.message_handler(commands=['word'])
+def send_word(message):
+    if not vocab_list:
+        bot.reply_to(message, "ভাই vocab.txt ফাঁকা 😅 আগে ওয়ার্ড অ্যাড করো")
+        return
+    
+    word_data = random.choice(vocab_list)
+    text = f"**📚 Spoken Word**\n\n**Word:** `{word_data['word']}`\n**অর্থ:** {word_data['meaning']}\n**Example:** {word_data['example']}"
+    bot.send_message(message.chat.id, text, parse_mode='Markdown')
 # 1. Fun Zone
 @bot.message_handler(func=lambda m: m.text == "🎭 Fun Zone")
 def fun_zone(message):
