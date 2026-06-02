@@ -96,15 +96,15 @@ def start(message):
     user_state[message.chat.id] = None
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     
-    # তোমার আগের 17টা বাটন এখানে থাকবে
+    # তোমার আগের 19টা বাটন এখানে থাকবে
     btn1 = types.KeyboardButton("📊 Word Counter")
     btn2 = types.KeyboardButton("🔤 Case Converter")
     btn3 = types.KeyboardButton("🔢 Number Converter")
     # ... তোমার বাকি 14টা বাটন এভাবে লিখো ...
     btn_word = types.KeyboardButton("📚 Spoken Word")
     btn_translate = types.KeyboardButton("🌐 Auto Translate")  
-বাটনগুলা সাজাও
- markup.add(btn1, btn2)
+    # বাটনগুলা সাজাও
+      markup.add(btn1, btn2)
  ... তোমার আগের markup.add লাইন ...
 markup.add(btn_word)
 markup.add(btn_translate)  # লাস্টে নতুন লাইন
