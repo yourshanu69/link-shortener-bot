@@ -22,7 +22,23 @@ RENDER_URL = os.environ.get('RENDER_URL')
 
 bot = telebot.TeleBot(BOT_TOKEN)
 user_state = {}
+# Vocabulary লোড করার কোড
+import random
 
+vocab_list = []
+file_path = os.path.join(os.path.dirname(__file__), 'vocab.txt')
+
+try:
+    with open(file_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            if line.strip():
+                parts = line.strip().split('|')
+                if len(parts) == 3:
+                    word, meaning, example = parts
+                    vocab_list.append({"word": word, "meaning": meaning, "example": example})
+    print(f"Vocab লোড হইছে: {len(vocab_list)} টা ওয়ার্ড")
+except Exception as e:
+    print(f"vocab.txt এরর: {e}")
 # ফন্ট ফিক্সড ভার্সন - বাংলা + ইংলিশ দুইটাই সাপোর্ট করে
 # ইংলিশ ফন্ট রেজিস্টার
 pdfmetrics.registerFont(TTFont('DejaVu', 'DejaVuSans.ttf'))
@@ -485,7 +501,15 @@ def default_handler(message):
         bot.send_message(message.chat.id, "প্রথমে কাজটা শেষ করো 👆 অথবা `/cancel` লিখো")
     else:
         bot.send_message(message.chat.id, "মেনু থেকে অপশন সিলেক্ট করো 👇")
-
+@bot.message_handler(commands=['word'])
+def send_word(message):
+    if not vocab_list:
+        bot.reply_to(message, "ভাই vocab.txt ফাঁকা 😅")
+        return
+    
+    word_data = random.choice(vocab_list)
+    text = f"**📚 Word:** {word_data['word']}\n**অর্থ:** {word_data['meaning']}\n**Example:** {word_data['example']}"
+    bot.send_message(message.chat.id, text, parse_mode='Markdown')
 if __name__ == "__main__":
     bot.remove_webhook()
     bot.set_webhook(url=f"{RENDER_URL}/webhook")
