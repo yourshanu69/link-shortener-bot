@@ -102,12 +102,12 @@ def start(message):
     btn3 = types.KeyboardButton("🔢 Number Converter")
     # ... তোমার বাকি 14টা বাটন এভাবে লিখো ...
     btn_word = types.KeyboardButton("📚 Spoken Word")
-    btn_translate = types.KeyboardButton("🌐 Auto Translate")  
+    btn_translate = types.KeyboardButton('🌐 Auto Translate')
     # বাটনগুলা সাজাও
-      markup.add(btn1, btn2)
- ... তোমার আগের markup.add লাইন ...
-markup.add(btn_word)
-markup.add(btn_translate)  # লাস্টে নতুন লাইন
+    markup.add(btn1, btn2)  # <- লাইন 106 এর সাথে একই Indent
+    # ... তোমার আগের markup.add লাইন ...
+    markup.add(btn_word)     # <- এটাও একই Indent
+    markup.add(btn_translate) # লাস্টে নতুন লাইন
     
     bot.send_message(message.chat.id, 
         "🔥 Shanu's Magic Bot v6\n19টা ভাইরাল টুল রেডি। সব ফ্রি + ফাস্ট\n/cancel দিয়ে বাতিল করো",
