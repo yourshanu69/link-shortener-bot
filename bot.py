@@ -90,49 +90,14 @@ def webhook():
     update = telebot.types.Update.de_json(json_str)
     bot.process_new_updates([update])
     return "ok", 200
-
-@bot.message_handler(commands=['start'])
-def start(message):
-    user_state[message.chat.id] = None
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    
-    # তোমার আগের 19টা বাটন এখানে থাকবে
-    btn1 = types.KeyboardButton("📊 Word Counter")
-    btn2 = types.KeyboardButton("🔤 Case Converter")
-    btn3 = types.KeyboardButton("🔢 Number Converter")
-    # ... তোমার বাকি 14টা বাটন এভাবে লিখো ...
-    btn_word = types.KeyboardButton("📚 Spoken Word")
-    btn_translate = types.KeyboardButton('🌐 Auto Translate')
-    # বাটনগুলা সাজাও
-    markup.add(btn1, btn2)  # <- লাইন 106 এর সাথে একই Indent
-    # ... তোমার আগের markup.add লাইন ...
-    markup.add(btn_word)     # <- এটাও একই Indent
-    markup.add(btn_translate) # লাস্টে নতুন লাইন
-    
-    bot.send_message(message.chat.id, 
-        "🔥 Shanu's Magic Bot v6\n19টা ভাইরাল টুল রেডি। সব ফ্রি + ফাস্ট\n/cancel দিয়ে বাতিল করো",
-        reply_markup=markup)
-
-# বাটনে ক্লিক করলে এই ফাংশন রান হবে - নতুন
 @bot.message_handler(func=lambda m: m.text == "📚 Spoken Word")
 def word_button_handler(message):
     send_word(message)
 
-@bot.message_handler(commands=['word'])
-def send_word(message):
-    if not vocab_list:
-        bot.reply_to(message, "ভাই vocab.txt ফাঁকা 😅 আগে ওয়ার্ড অ্যাড করো")
-        return
-    
-    word_data = random.choice(vocab_list)
-    text = f"**📚 Spoken Word**\n\n**Word:** `{word_data['word']}`\n**অর্থ:** {word_data['meaning']}\n**Example:** {word_data['example']}"
-    bot.send_message(message.chat.id, text, parse_mode='Markdown')
-  # Auto Translate এর handler
 @bot.message_handler(func=lambda m: m.text == "🌐 Auto Translate")
 def translate_button(message):
     user_state[message.chat.id] = "translate"
     bot.send_message(message.chat.id, "🌐 Translate চালু!\nযেকোনো বাংলা/ইংরেজি লিখো।\n/cancel দিয়ে বন্ধ করো")
-
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == "translate")
 def auto_translate(message):
     if message.text == "/cancel":
@@ -144,6 +109,51 @@ def auto_translate(message):
         bot.send_message(message.chat.id, f"**তুমি:** {message.text}\n**ইংরেজি:** `{result.text}`", parse_mode='Markdown')
     except:
         bot.send_message(message.chat.id, "সরি ভাই ট্রান্সলেট হইলো না 😅")
+# তোমার আগের 19টা বাটন এখানে থাকবে
+btn1 = types.KeyboardButton("📊 Word Counter")
+btn2 = types.KeyboardButton("🔠 Case Converter")
+btn3 = types.KeyboardButton("🔢 Number Converter")
+# ... তোমার বাকি 14টা বাটন এভাবে লিখা ...
+
+btn_word = types.KeyboardButton("📚 Spoken Word")
+btn_translate = types.KeyboardButton("🌐 Auto Translate")
+
+# বাটনগুলা সাজাও
+markup.add(btn1, btn2)
+# ... তোমার আগের markup.add লাইন ...
+markup.add(btn_word)
+markup.add(btn_translate)
+
+bot.send_message(
+    message.chat.id,
+    "🔥 Shanu's Magic Bot v6\n19টা ভাইরাল টুল রেডি। সব ফ্রি!",
+    reply_markup=markup
+)
+
+# বাটনে ক্লিক করলে এই ফাংশন রান হবে - নতুন
+
+@bot.message_handler(commands=['word'])
+def send_word(message):
+    if not vocab_list:
+        bot.reply_to(message, "ভাই vocab.txt ফাঁকা 😅 আগে ওয়ার্ড অ্যাড করো")
+        return
+    
+    word_data = random.choice(vocab_list)
+    text = f"**📚 Spoken Word**\n\n**Word:** `{word_data['word']}`\n**অর্থ:** {word_data['meaning']}\n**Example:** {word_data['example']}"
+    bot.send_message(message.chat.id, text, parse_mode='Markdown')
+ # Auto Translate এর handler
+@bot.message_handler(func=lambda m: user_state.get(m.chat.id) == "translate")
+def auto_translate(message):
+    if message.text == "/cancel":
+        user_state[message.chat.id] = None
+        bot.send_message(message.chat.id, "Translate বন্ধ ✅")
+        return
+    try:
+        result = translator.translate(message.text, dest='en')
+        bot.send_message(message.chat.id, f"**তুমি:** {message.text}\n**ইংরেজি:** `{result.text}`", parse_mode='Markdown')
+    except:
+        bot.send_message(message.chat.id, "সরি ভাই ট্রান্সলেট হইলো না 😅")
+    
 # 1. Fun Zone
 @bot.message_handler(func=lambda m: m.text == "🎭 Fun Zone")
 def fun_zone(message):
