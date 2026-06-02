@@ -73,9 +73,9 @@ tools = {
     'removebg': "✂️ BG রিমুভ",
     'ip': "🌐 IP Lookup",
     'weather': "🌤️ Weather",
-    'bright': "☀️ ব্রাইটনেস",
-    'female_tts': "🎤 BD Female Voice",
-    'male_tts': "🎤 BD Male Voice"
+    'bright': "✨ ব্রাইটনেস",
+    'female_tts': "🎙️ BD Female Voice",
+    'male_tts': "🎙️ BD Male Voice",  # <- এই কমাটা অ্যাড করো
     'spoken_word': "📚 Spoken Word",
     'translate': "🌐 Auto Translate"
 }
