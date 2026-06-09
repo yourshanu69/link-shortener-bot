@@ -357,16 +357,24 @@ def done_pdf(msg):
         return
     try:
         images = SESSION[user_id]['images']
-        first_img = images[0]
-        other_imgs = images[1:]
+        # সব ছবি RGB তে কনভার্ট - PDF এর জন্য মাস্ট
+        rgb_images = [img.convert('RGB') for img in images]
+
+        first_img = rgb_images[0]
+        other_imgs = rgb_images[1:]
+
         pdf_bytes = BytesIO()
-        first_img.save(pdf_bytes, format='PDF', save_all=True, append_images=other_imgs)
+        if other_imgs:
+            first_img.save(pdf_bytes, format='PDF', save_all=True, append_images=other_imgs)
+        else:
+            first_img.save(pdf_bytes, format='PDF')
+
         pdf_bytes.seek(0)
         pdf_bytes.name = "batch_images.pdf"
         bot.send_document(msg.chat.id, pdf_bytes, caption=f"🟥 {len(images)}টা ছবি→1টা PDF ডান ✅")
         SESSION[user_id] = {}
     except Exception as e:
-        bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা: {e}")
+        bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা: {str(e)}")
         SESSION[user_id] = {}
 
 @app.route('/')
