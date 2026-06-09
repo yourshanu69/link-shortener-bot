@@ -510,4 +510,4 @@ def bright_process(message):
         buf = BytesIO()
         img.save(buf, format='PNG')
         buf.seek(0)
-        bot.send_photo(message.chat.id, buf, caption="✅ ব্রাইটনেস বাড়া
+        bot.send_photo(message.chat.id, buf, caption="✅ ব্রাইটনেস বাড়ানো হলো!")
