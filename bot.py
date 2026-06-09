@@ -40,6 +40,7 @@ def save_user(user_id, first_name, username):
 def get_user_count():
     return len(load_users())
 
+# ফুল কালার কিবোর্ড
 def main_keyboard():
     markup = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     markup.add(
@@ -63,7 +64,12 @@ def main_keyboard():
 @bot.message_handler(commands=['start'])
 def start(msg):
     save_user(msg.from_user.id, msg.from_user.first_name, msg.from_user.username)
-    bot.send_message(msg.chat.id, f"ওয়েলকাম বস {msg.from_user.first_name}! 👑\nনিচের বাটন চাপো 👇\n👥 ইউজার: {get_user_count()} জন", reply_markup=main_keyboard())
+
+    # এডমিন হলে ইউজার কাউন্ট দেখাবে, নরমাল ইউজার দেখবে না
+    if msg.from_user.id == ADMIN_ID:
+        bot.send_message(msg.chat.id, f"ওয়েলকাম বস {msg.from_user.first_name}! 👑\nনিচের বাটন চাপো 👇\n👥 ইউজার: {get_user_count()} জন", reply_markup=main_keyboard())
+    else:
+        bot.send_message(msg.chat.id, f"ওয়েলকাম বস {msg.from_user.first_name}! 👑\nনিচের বাটন চাপো 👇", reply_markup=main_keyboard())
 
 # বাটন হ্যান্ডেল
 @bot.message_handler(func=lambda m: m.text == '🟥 PDF মার্জ')
@@ -131,15 +137,13 @@ def btn_quote(msg):
     quotes = ["🟪 'লাইফ ইজ প্র্যাংক' 😂", "🟪 'হাসতে থাকো' 🔥", "🟪 'টেনশন নিও না' ✨"]
     bot.reply_to(msg, random.choice(quotes))
 
-# এডমিন প্যানেল - শুধু তুমি দেখতে পারবা + জয়েন ডেট সহ
+# এডমিন প্যানেল - শুধু তুমি দেখতে পারবা
 @bot.message_handler(func=lambda m: m.text == '📊 এডমিন')
 def btn_stats(msg):
     if msg.from_user.id == ADMIN_ID:
         users = load_users()
         total = len(users)
-
         text = f"📊 **এডমিন ড্যাশবোর্ড**\n\n👥 মোট ইউজার: {total} জন\n🤖 স্ট্যাটাস: লাইভ ✅\n\n**ইউজার লিস্ট:**\n\n"
-
         count = 1
         for uid, data in users.items():
             text += f"{count}. `{uid}`\n নাম: {data['name']}\n ইউজার: @{data['username']}\n জয়েন: {data['join_date']}\n\n"
@@ -147,7 +151,6 @@ def btn_stats(msg):
             if count > 30:
                 text += f"...আর {total-30} জন আছে"
                 break
-
         bot.reply_to(msg, text, parse_mode='Markdown')
     else:
         bot.reply_to(msg, "🚫 এডমিন ছাড়া ঢোকা নিষেধ 😎")
@@ -166,16 +169,19 @@ def handle_text(msg):
         return
 
     if mode == 'text2pdf':
-        img = Image.new('RGB', (595, 842), 'white')
-        draw = ImageDraw.Draw(img)
-        y = 50
-        for line in text.split('\n'):
-            draw.text((50, y), line, fill='black')
-            y += 30
-        pdf_bytes = BytesIO()
-        img.save(pdf_bytes, format='PDF')
-        pdf_bytes.seek(0)
-        bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 টেক্সট→PDF ডান ✅", filename="text.pdf")
+        try:
+            img = Image.new('RGB', (595, 842), 'white')
+            draw = ImageDraw.Draw(img)
+            y = 50
+            for line in text.split('\n')[:35]:
+                draw.text((50, y), line, fill='black')
+                y += 22
+            pdf_bytes = BytesIO()
+            img.save(pdf_bytes, format='PDF', save_all=True)
+            pdf_bytes.seek(0)
+            bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 টেক্সট→PDF ডান ✅", filename="text.pdf")
+        except Exception as e:
+            bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা: {e}")
         SESSION[user_id] = {}
         return
 
@@ -186,8 +192,11 @@ def handle_text(msg):
         return
 
     if mode == 'ip':
-        r = requests.get(f"http://ip-api.com/json/{text}").json()
-        bot.reply_to(msg, f"🟨 **IP Info**\n🌍 {r['country']}\n🏙️ {r['city']}\n📡 {r['isp']}", parse_mode='Markdown')
+        try:
+            r = requests.get(f"http://ip-api.com/json/{text}").json()
+            bot.reply_to(msg, f"🟨 **IP Info**\n🌍 {r['country']}\n🏙️ {r['city']}\n📡 {r['isp']}", parse_mode='Markdown')
+        except:
+            bot.reply_to(msg, "🟨 ভুল IP")
         SESSION[user_id] = {}
         return
 
@@ -196,8 +205,11 @@ def handle_text(msg):
         if not api_key:
             bot.reply_to(msg, "🟨 WEATHER_KEY অ্যাড করো Render এ")
             return
-        r = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={text}&appid={api_key}&units=metric&lang=bn").json()
-        bot.reply_to(msg, f"🟨 **{text}**\n🌡️ {r['main']['temp']}°C\n💧 {r['main']['humidity']}%\n☁️ {r['weather'][0]['description']}", parse_mode='Markdown')
+        try:
+            r = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={text}&appid={api_key}&units=metric&lang=bn").json()
+            bot.reply_to(msg, f"🟨 **{text}**\n🌡️ {r['main']['temp']}°C\n💧 {r['main']['humidity']}%\n☁️ {r['weather'][0]['description']}", parse_mode='Markdown')
+        except:
+            bot.reply_to(msg, "🟨 শহর পাওয়া যায় নাই")
         SESSION[user_id] = {}
         return
 
@@ -243,32 +255,38 @@ def handle_pdf(msg):
         bot.reply_to(msg, f"🟥 PDF {len(SESSION[user_id]['files'])} জমা। /donemerge দাও")
 
     elif mode == 'split_wait_pdf':
-        pages = SESSION[user_id]['pages']
-        reader = PdfReader(BytesIO(pdf_bytes))
-        writer = PdfWriter()
-        for p in pages.replace(' ', '').split(','):
-            if '-' in p:
-                s, e = map(int, p.split('-'))
-                for i in range(s-1, e):
-                    writer.add_page(reader.pages[i])
-            else:
-                writer.add_page(reader.pages[int(p)-1])
-        output = BytesIO()
-        writer.write(output)
-        output.seek(0)
-        bot.send_document(msg.chat.id, output, caption=f"🟥 পেইজ {pages} কাটা শেষ ✅", filename="split.pdf")
+        try:
+            pages = SESSION[user_id]['pages']
+            reader = PdfReader(BytesIO(pdf_bytes))
+            writer = PdfWriter()
+            for p in pages.replace(' ', '').split(','):
+                if '-' in p:
+                    s, e = map(int, p.split('-'))
+                    for i in range(s-1, e):
+                        writer.add_page(reader.pages[i])
+                else:
+                    writer.add_page(reader.pages[int(p)-1])
+            output = BytesIO()
+            writer.write(output)
+            output.seek(0)
+            bot.send_document(msg.chat.id, output, caption=f"🟥 পেইজ {pages} কাটা শেষ ✅", filename="split.pdf")
+        except Exception as e:
+            bot.reply_to(msg, f"🟥 কাটতে সমস্যা: {e}")
         SESSION[user_id] = {}
 
     elif mode == 'compress' and msg.caption == 'compress':
-        reader = PdfReader(BytesIO(pdf_bytes))
-        writer = PdfWriter()
-        for page in reader.pages:
-            page.compress_content_streams()
-            writer.add_page(page)
-        output = BytesIO()
-        writer.write(output)
-        output.seek(0)
-        bot.send_document(msg.chat.id, output, caption="🟥 PDF 70% ছোট ✅", filename="compressed.pdf")
+        try:
+            reader = PdfReader(BytesIO(pdf_bytes))
+            writer = PdfWriter()
+            for page in reader.pages:
+                page.compress_content_streams()
+                writer.add_page(page)
+            output = BytesIO()
+            writer.write(output)
+            output.seek(0)
+            bot.send_document(msg.chat.id, output, caption="🟥 PDF 70% ছোট ✅", filename="compressed.pdf")
+        except Exception as e:
+            bot.reply_to(msg, f"🟥 কম্প্রেস সমস্যা: {e}")
         SESSION[user_id] = {}
 
 # ছবি হ্যান্ডেল
@@ -276,14 +294,25 @@ def handle_pdf(msg):
 def handle_photo(msg):
     user_id = msg.from_user.id
     mode = SESSION.get(user_id, {}).get('mode')
-    file_info = bot.get_file(msg.photo[-1].file_id)
-    img = Image.open(BytesIO(bot.download_file(file_info.file_path))).convert('RGB')
+
+    if not mode:
+        return
+
+    try:
+        file_info = bot.get_file(msg.photo[-1].file_id)
+        img = Image.open(BytesIO(bot.download_file(file_info.file_path))).convert('RGB')
+    except Exception as e:
+        bot.reply_to(msg, f"🟦 ছবি রিড করতে সমস্যা: {e}")
+        return
 
     if mode == 'img2pdf':
-        pdf_bytes = BytesIO()
-        img.save(pdf_bytes, format='PDF')
-        pdf_bytes.seek(0)
-        bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 ছবি→PDF ডান ✅", filename="image.pdf")
+        try:
+            pdf_bytes = BytesIO()
+            img.save(pdf_bytes, format='PDF', save_all=True)
+            pdf_bytes.seek(0)
+            bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 ছবি→PDF ডান ✅", filename="image.pdf")
+        except Exception as e:
+            bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা: {e}")
         SESSION[user_id] = {}
         return
 
@@ -291,7 +320,7 @@ def handle_photo(msg):
         w, h = SESSION[user_id]['size']
         img = img.resize((w, h), Image.LANCZOS)
         output = BytesIO()
-        img.save(output, format='JPEG')
+        img.save(output, format='JPEG', quality=95)
         output.seek(0)
         bot.send_photo(msg.chat.id, output, caption=f"🟦 {w}x{h} রিসাইজ ডান ✅")
         SESSION[user_id] = {}
@@ -303,7 +332,7 @@ def handle_photo(msg):
         enhancer = ImageEnhance.Contrast(img)
         img = enhancer.enhance(1.3)
         output = BytesIO()
-        img.save(output, format='JPEG')
+        img.save(output, format='JPEG', quality=95)
         output.seek(0)
         bot.send_photo(msg.chat.id, output, caption="🟦 HD এনহ্যান্স ডান ✅")
         SESSION[user_id] = {}
@@ -313,7 +342,10 @@ def handle_photo(msg):
 @bot.message_handler(commands=['donemerge'])
 def done_merge(msg):
     user_id = msg.from_user.id
-    if user_id in SESSION and len(SESSION[user_id].get('files', [])) > 1:
+    if user_id not in SESSION or len(SESSION[user_id].get('files', [])) < 2:
+        bot.reply_to(msg, "🟥 কমপক্ষে 2টা PDF লাগবে")
+        return
+    try:
         merger = PdfWriter()
         for pdf_bytes in SESSION[user_id]['files']:
             reader = PdfReader(BytesIO(pdf_bytes))
@@ -323,6 +355,9 @@ def done_merge(msg):
         merger.write(output)
         output.seek(0)
         bot.send_document(msg.chat.id, output, caption="🟥 মার্জ কমপ্লিট ✅", filename="merged.pdf")
+        SESSION[user_id] = {}
+    except Exception as e:
+        bot.reply_to(msg, f"🟥 মার্জ করতে সমস্যা: {e}")
         SESSION[user_id] = {}
 
 @app.route('/')
