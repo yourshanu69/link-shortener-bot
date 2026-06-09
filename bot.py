@@ -1,4 +1,9 @@
 import os
+from flask import Flask, request
+import telebot
+from PIL import Image, ImageEnhance
+from io import BytesIO
+import requests
 import random
 import datetime
 import asyncio
@@ -514,22 +519,23 @@ def bright_process(message):
         user_state[message.chat.id] = None
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
-import os
-from flask import Flask
 
+TOKEN = os.environ.get('BOT_TOKEN')
+bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 @app.route('/')
 def home():
     return "Bot is running!"
 
-def run_flask():
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    update = telebot.types.Update.de_json(request.stream.read().decode('utf-8'))
+    bot.process_new_updates([update])
+    return "ok", 200
 
 if __name__ == '__main__':
-    import threading
-    # Flask সার্ভার আলাদা থ্রেডে চালাও
-    threading.Thread(target=run_flask).start()
-    # টেলিগ্রাম বট চালাও
-    bot.polling(none_stop=True)
+    bot.remove_webhook()
+    bot.set_webhook(url=os.environ.get('RENDER_EXTERNAL_URL') + '/webhook')
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host='0.0.0.0', port=port)
