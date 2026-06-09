@@ -511,3 +511,6 @@ def bright_process(message):
         img.save(buf, format='PNG')
         buf.seek(0)
         bot.send_photo(message.chat.id, buf, caption="✅ ব্রাইটনেস বাড়ানো হলো!")
+        user_state[message.chat.id] = None
+    except Exception as e:
+        bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
