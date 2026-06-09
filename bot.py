@@ -2,6 +2,7 @@ import os
 import telebot
 import json
 import random
+import traceback
 from datetime import datetime
 from flask import Flask, request
 from PIL import Image, ImageEnhance, ImageDraw
@@ -355,26 +356,41 @@ def done_pdf(msg):
     if user_id not in SESSION or len(SESSION[user_id].get('images', [])) < 1:
         bot.reply_to(msg, "🟥 কমপক্ষে 1টা ছবি লাগবে")
         return
+
+    bot.reply_to(msg, f"🟥 {len(SESSION[user_id]['images'])}টা ছবি প্রসেস করতেছি... 10-20 সেকেন্ড লাগবে ⏳")
+
     try:
         images = SESSION[user_id]['images']
-        # সব ছবি RGB তে কনভার্ট - PDF এর জন্য মাস্ট
-        rgb_images = [img.convert('RGB') for img in images]
+        processed_images = []
 
-        first_img = rgb_images[0]
-        other_imgs = rgb_images[1:]
+        # ছবি রিসাইজ + RGB কনভার্ট - মেমরি বাঁচানোর জন্য
+        for img in images:
+            img = img.convert('RGB')
+            # যদি ছবি অনেক বড় হয় 2000px এর বেশি, ছোট করো
+            max_size = 2000
+            if img.width > max_size or img.height > max_size:
+                img.thumbnail((max_size, max_size), Image.LANCZOS)
+            processed_images.append(img)
+
+        first_img = processed_images[0]
+        other_imgs = processed_images[1:]
 
         pdf_bytes = BytesIO()
         if other_imgs:
-            first_img.save(pdf_bytes, format='PDF', save_all=True, append_images=other_imgs)
+            first_img.save(pdf_bytes, format='PDF', save_all=True, append_images=other_imgs, resolution=100.0)
         else:
-            first_img.save(pdf_bytes, format='PDF')
+            first_img.save(pdf_bytes, format='PDF', resolution=100.0)
 
         pdf_bytes.seek(0)
         pdf_bytes.name = "batch_images.pdf"
-        bot.send_document(msg.chat.id, pdf_bytes, caption=f"🟥 {len(images)}টা ছবি→1টা PDF ডান ✅")
+        size_mb = round(len(pdf_bytes.getvalue())/1024/1024, 2)
+        bot.send_document(msg.chat.id, pdf_bytes, caption=f"🟥 {len(images)}টা ছবি→1টা PDF ডান ✅\nসাইজ: {size_mb} MB")
         SESSION[user_id] = {}
+
     except Exception as e:
-        bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা: {str(e)}")
+        error_detail = traceback.format_exc()
+        print(error_detail) # Render লগে দেখবা
+        bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা:\n{str(e)}\n\nRender লগ চেক করো ভাই")
         SESSION[user_id] = {}
 
 @app.route('/')
