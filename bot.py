@@ -174,7 +174,7 @@ def handle_text(msg):
             pdf_bytes = BytesIO()
             img.save(pdf_bytes, format='PDF', save_all=True)
             pdf_bytes.seek(0)
-            bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 টেক্সট→PDF ডান ✅", file_name="text.pdf")
+            bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 টেক্সট→PDF ডান ✅", filename="text.pdf")
         except Exception as e:
             bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা: {e}")
         SESSION[user_id] = {}
@@ -263,7 +263,7 @@ def handle_pdf(msg):
             output = BytesIO()
             writer.write(output)
             output.seek(0)
-            bot.send_document(msg.chat.id, output, caption=f"🟥 পেইজ {pages} কাটা শেষ ✅", file_name="split.pdf")
+            bot.send_document(msg.chat.id, output, caption=f"🟥 পেইজ {pages} কাটা শেষ ✅", filename="split.pdf")
         except Exception as e:
             bot.reply_to(msg, f"🟥 কাটতে সমস্যা: {e}")
         SESSION[user_id] = {}
@@ -278,7 +278,7 @@ def handle_pdf(msg):
             output = BytesIO()
             writer.write(output)
             output.seek(0)
-            bot.send_document(msg.chat.id, output, caption="🟥 PDF 70% ছোট ✅", file_name="compressed.pdf")
+            bot.send_document(msg.chat.id, output, caption="🟥 PDF 70% ছোট ✅", filename="compressed.pdf")
         except Exception as e:
             bot.reply_to(msg, f"🟥 কম্প্রেস সমস্যা: {e}")
         SESSION[user_id] = {}
@@ -303,7 +303,7 @@ def handle_photo(msg):
             pdf_bytes = BytesIO()
             img.save(pdf_bytes, format='PDF', save_all=True)
             pdf_bytes.seek(0)
-            bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 ছবি→PDF ডান ✅", file_name="image.pdf")
+            bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 ছবি→PDF ডান ✅", filename="image.pdf")
         except Exception as e:
             bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা: {e}")
         SESSION[user_id] = {}
@@ -346,7 +346,7 @@ def done_merge(msg):
         output = BytesIO()
         merger.write(output)
         output.seek(0)
-        bot.send_document(msg.chat.id, output, caption="🟥 মার্জ কমপ্লিট ✅", file_name="merged.pdf")
+        bot.send_document(msg.chat.id, output, caption="🟥 মার্জ কমপ্লিট ✅", filename="merged.pdf")
         SESSION[user_id] = {}
     except Exception as e:
         bot.reply_to(msg, f"🟥 মার্জ করতে সমস্যা: {e}")
