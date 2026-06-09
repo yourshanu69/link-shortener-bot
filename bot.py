@@ -2,6 +2,7 @@ import os
 import telebot
 import json
 import random
+from datetime import datetime
 from flask import Flask, request
 from PIL import Image, ImageEnhance, ImageDraw
 from io import BytesIO
@@ -16,20 +17,25 @@ bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 USER_FILE = 'users.json'
-SESSION = {} # সব সেশনের জন্য 1টা ডিক্ট
+SESSION = {}
 
 def load_users():
     if os.path.exists(USER_FILE):
         with open(USER_FILE, 'r') as f:
             return json.load(f)
-    return []
+    return {}
 
-def save_user(user_id):
+def save_user(user_id, first_name, username):
     users = load_users()
+    user_id = str(user_id)
     if user_id not in users:
-        users.append(user_id)
+        users[user_id] = {
+            'name': first_name,
+            'username': username if username else 'None',
+            'join_date': datetime.now().strftime('%Y-%m-%d %H:%M')
+        }
         with open(USER_FILE, 'w') as f:
-            json.dump(users, f)
+            json.dump(users, f, ensure_ascii=False, indent=2)
 
 def get_user_count():
     return len(load_users())
@@ -56,7 +62,7 @@ def main_keyboard():
 
 @bot.message_handler(commands=['start'])
 def start(msg):
-    save_user(msg.from_user.id)
+    save_user(msg.from_user.id, msg.from_user.first_name, msg.from_user.username)
     bot.send_message(msg.chat.id, f"ওয়েলকাম বস {msg.from_user.first_name}! 👑\nনিচের বাটন চাপো 👇\n👥 ইউজার: {get_user_count()} জন", reply_markup=main_keyboard())
 
 # বাটন হ্যান্ডেল
@@ -125,28 +131,40 @@ def btn_quote(msg):
     quotes = ["🟪 'লাইফ ইজ প্র্যাংক' 😂", "🟪 'হাসতে থাকো' 🔥", "🟪 'টেনশন নিও না' ✨"]
     bot.reply_to(msg, random.choice(quotes))
 
+# এডমিন প্যানেল - শুধু তুমি দেখতে পারবা + জয়েন ডেট সহ
 @bot.message_handler(func=lambda m: m.text == '📊 এডমিন')
 def btn_stats(msg):
     if msg.from_user.id == ADMIN_ID:
-        bot.reply_to(msg, f"📊 এডমিন\n👥 ইউজার: {get_user_count()} জন\n🤖 লাইভ ✅")
-    else:
-        bot.reply_to(msg, "🚫 এডমিন না ভাই 😎")
+        users = load_users()
+        total = len(users)
 
-# টেক্সট হ্যান্ডেল - সব টুল এখানে
+        text = f"📊 **এডমিন ড্যাশবোর্ড**\n\n👥 মোট ইউজার: {total} জন\n🤖 স্ট্যাটাস: লাইভ ✅\n\n**ইউজার লিস্ট:**\n\n"
+
+        count = 1
+        for uid, data in users.items():
+            text += f"{count}. `{uid}`\n নাম: {data['name']}\n ইউজার: @{data['username']}\n জয়েন: {data['join_date']}\n\n"
+            count += 1
+            if count > 30:
+                text += f"...আর {total-30} জন আছে"
+                break
+
+        bot.reply_to(msg, text, parse_mode='Markdown')
+    else:
+        bot.reply_to(msg, "🚫 এডমিন ছাড়া ঢোকা নিষেধ 😎")
+
+# টেক্সট হ্যান্ডেল
 @bot.message_handler(func=lambda m: m.from_user.id in SESSION)
 def handle_text(msg):
     user_id = msg.from_user.id
     mode = SESSION[user_id].get('mode')
     text = msg.text
 
-    # PDF Split পেইজ নাম্বার
     if mode == 'split_wait_pages':
         SESSION[user_id]['pages'] = text
         SESSION[user_id]['mode'] = 'split_wait_pdf'
         bot.reply_to(msg, f"🟥 পেইজ {text} সেট। এখন PDF পাঠাও ✅")
         return
 
-    # Text to PDF - লেখা আসলেই PDF বানায় দিবে
     if mode == 'text2pdf':
         img = Image.new('RGB', (595, 842), 'white')
         draw = ImageDraw.Draw(img)
@@ -158,24 +176,21 @@ def handle_text(msg):
         img.save(pdf_bytes, format='PDF')
         pdf_bytes.seek(0)
         bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 টেক্সট→PDF ডান ✅", filename="text.pdf")
-        SESSION[user_id]['mode'] = None
+        SESSION[user_id] = {}
         return
 
-    # QR
     if mode == 'qr':
         url = f"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={text}"
         bot.send_photo(msg.chat.id, url, caption="🟨 QR রেডি ✅")
-        SESSION[user_id]['mode'] = None
+        SESSION[user_id] = {}
         return
 
-    # IP
     if mode == 'ip':
         r = requests.get(f"http://ip-api.com/json/{text}").json()
         bot.reply_to(msg, f"🟨 **IP Info**\n🌍 {r['country']}\n🏙️ {r['city']}\n📡 {r['isp']}", parse_mode='Markdown')
-        SESSION[user_id]['mode'] = None
+        SESSION[user_id] = {}
         return
 
-    # Weather
     if mode == 'weather':
         api_key = os.environ.get('WEATHER_KEY')
         if not api_key:
@@ -183,28 +198,25 @@ def handle_text(msg):
             return
         r = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={text}&appid={api_key}&units=metric&lang=bn").json()
         bot.reply_to(msg, f"🟨 **{text}**\n🌡️ {r['main']['temp']}°C\n💧 {r['main']['humidity']}%\n☁️ {r['weather'][0]['description']}", parse_mode='Markdown')
-        SESSION[user_id]['mode'] = None
+        SESSION[user_id] = {}
         return
 
-    # Wordcount
     if mode == 'wordcount':
         words = len(text.split())
         chars = len(text)
         bot.reply_to(msg, f"🟨 **রেজাল্ট**\n📝 ওয়ার্ড: {words}\n🔤 ক্যারেক্টার: {chars}", parse_mode='Markdown')
-        SESSION[user_id]['mode'] = None
+        SESSION[user_id] = {}
         return
 
-    # Prank Voice
     if mode == 'prankvoice':
         tts = gTTS(text=text, lang='bn')
         voice_bytes = BytesIO()
         tts.write_to_fp(voice_bytes)
         voice_bytes.seek(0)
         bot.send_voice(msg.chat.id, voice_bytes, caption="🟪 প্র্যাংক ভয়েস 😂")
-        SESSION[user_id]['mode'] = None
+        SESSION[user_id] = {}
         return
 
-    # Resize সাইজ
     if mode == 'resize_wait_size':
         try:
             w, h = map(int, text.split('x'))
@@ -224,14 +236,12 @@ def handle_pdf(msg):
     pdf_bytes = bot.download_file(file_info.file_path)
     mode = SESSION.get(user_id, {}).get('mode')
 
-    # Merge
     if mode == 'merge' and msg.caption == 'merge':
         if 'files' not in SESSION[user_id]:
             SESSION[user_id]['files'] = []
         SESSION[user_id]['files'].append(pdf_bytes)
         bot.reply_to(msg, f"🟥 PDF {len(SESSION[user_id]['files'])} জমা। /donemerge দাও")
 
-    # Split
     elif mode == 'split_wait_pdf':
         pages = SESSION[user_id]['pages']
         reader = PdfReader(BytesIO(pdf_bytes))
@@ -249,7 +259,6 @@ def handle_pdf(msg):
         bot.send_document(msg.chat.id, output, caption=f"🟥 পেইজ {pages} কাটা শেষ ✅", filename="split.pdf")
         SESSION[user_id] = {}
 
-    # Compress
     elif mode == 'compress' and msg.caption == 'compress':
         reader = PdfReader(BytesIO(pdf_bytes))
         writer = PdfWriter()
@@ -260,6 +269,7 @@ def handle_pdf(msg):
         writer.write(output)
         output.seek(0)
         bot.send_document(msg.chat.id, output, caption="🟥 PDF 70% ছোট ✅", filename="compressed.pdf")
+        SESSION[user_id] = {}
 
 # ছবি হ্যান্ডেল
 @bot.message_handler(content_types=['photo'])
@@ -269,7 +279,6 @@ def handle_photo(msg):
     file_info = bot.get_file(msg.photo[-1].file_id)
     img = Image.open(BytesIO(bot.download_file(file_info.file_path))).convert('RGB')
 
-    # Image to PDF - ক্যাপশন লাগবে না
     if mode == 'img2pdf':
         pdf_bytes = BytesIO()
         img.save(pdf_bytes, format='PDF')
@@ -278,7 +287,6 @@ def handle_photo(msg):
         SESSION[user_id] = {}
         return
 
-    # Resize
     if mode == 'resize_wait_img':
         w, h = SESSION[user_id]['size']
         img = img.resize((w, h), Image.LANCZOS)
@@ -289,7 +297,6 @@ def handle_photo(msg):
         SESSION[user_id] = {}
         return
 
-    # Enhance
     if mode == 'enhance':
         enhancer = ImageEnhance.Sharpness(img)
         img = enhancer.enhance(2.0)
