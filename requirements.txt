@@ -1,7 +1,7 @@
-Flask==3.0.0
-pyTelegramBotAPI==4.14.0
-qrcode==7.4.2
-reportlab==4.1.0
-requests==2.31.0
-edge-tts==6.1.9
-nest_asyncio==1.6.0
+pyTelegramBotAPI
+Flask
+gunicorn
+Pillow
+PyPDF2
+requests
+gTTS
