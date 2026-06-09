@@ -63,7 +63,6 @@ def main_keyboard():
 @bot.message_handler(commands=['start'])
 def start(msg):
     save_user(msg.from_user.id, msg.from_user.first_name, msg.from_user.username)
-
     if msg.from_user.id == ADMIN_ID:
         bot.send_message(msg.chat.id, f"ওয়েলকাম বস {msg.from_user.first_name}! 👑\nনিচের বাটন চাপো 👇\n👥 ইউজার: {get_user_count()} জন", reply_markup=main_keyboard())
     else:
@@ -91,8 +90,8 @@ def btn_text2pdf(msg):
 
 @bot.message_handler(func=lambda m: m.text == '🟥 ছবি→PDF')
 def btn_img2pdf(msg):
-    SESSION[msg.from_user.id] = {'mode': 'img2pdf'}
-    bot.reply_to(msg, "🟥 ছবি পাঠাও। ক্যাপশন ছাড়াই চলবে ✅")
+    SESSION[msg.from_user.id] = {'mode': 'img2pdf_batch', 'images': []}
+    bot.reply_to(msg, "🟥 ব্যাচ মোড অন ✅\nযত খুশি ছবি পাঠাও। শেষে /donepdf দাও")
 
 @bot.message_handler(func=lambda m: m.text == '🟦 রিসাইজ ছবি')
 def btn_resize(msg):
@@ -301,16 +300,9 @@ def handle_photo(msg):
         bot.reply_to(msg, f"🟦 ছবি রিড করতে সমস্যা: {e}")
         return
 
-    if mode == 'img2pdf':
-        try:
-            pdf_bytes = BytesIO()
-            img.save(pdf_bytes, format='PDF', save_all=True)
-            pdf_bytes.seek(0)
-            pdf_bytes.name = "image.pdf"
-            bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 ছবি→PDF ডান ✅")
-        except Exception as e:
-            bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা: {e}")
-        SESSION[user_id] = {}
+    if mode == 'img2pdf_batch':
+        SESSION[user_id]['images'].append(img)
+        bot.reply_to(msg, f"🟥 ছবি {len(SESSION[user_id]['images'])} জমা ✅\nআর পাঠাও। শেষে /donepdf দাও")
         return
 
     if mode == 'resize_wait_img':
@@ -355,6 +347,26 @@ def done_merge(msg):
         SESSION[user_id] = {}
     except Exception as e:
         bot.reply_to(msg, f"🟥 মার্জ করতে সমস্যা: {e}")
+        SESSION[user_id] = {}
+
+@bot.message_handler(commands=['donepdf'])
+def done_pdf(msg):
+    user_id = msg.from_user.id
+    if user_id not in SESSION or len(SESSION[user_id].get('images', [])) < 1:
+        bot.reply_to(msg, "🟥 কমপক্ষে 1টা ছবি লাগবে")
+        return
+    try:
+        images = SESSION[user_id]['images']
+        first_img = images[0]
+        other_imgs = images[1:]
+        pdf_bytes = BytesIO()
+        first_img.save(pdf_bytes, format='PDF', save_all=True, append_images=other_imgs)
+        pdf_bytes.seek(0)
+        pdf_bytes.name = "batch_images.pdf"
+        bot.send_document(msg.chat.id, pdf_bytes, caption=f"🟥 {len(images)}টা ছবি→1টা PDF ডান ✅")
+        SESSION[user_id] = {}
+    except Exception as e:
+        bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা: {e}")
         SESSION[user_id] = {}
 
 @app.route('/')
