@@ -514,3 +514,22 @@ def bright_process(message):
         user_state[message.chat.id] = None
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
+import os
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run_flask():
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
+
+if __name__ == '__main__':
+    import threading
+    # Flask সার্ভার আলাদা থ্রেডে চালাও
+    threading.Thread(target=run_flask).start()
+    # টেলিগ্রাম বট চালাও
+    bot.polling(none_stop=True)
