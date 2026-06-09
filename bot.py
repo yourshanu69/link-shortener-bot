@@ -26,7 +26,7 @@ SESSION = {}
 
 def get_session(user_id):
     if user_id not in SESSION:
-        SESSION[user_id] = {'mode': None, 'image_paths': [], 'files': []}
+        SESSION[user_id] = {'mode': None, 'image_paths': [], 'files': [], 'pages': '', 'size': (1280, 720)}
         print(f"DEBUG: New session created for {user_id}", flush=True)
     return SESSION[user_id]
 
@@ -88,7 +88,7 @@ def cancel_mode(msg):
     for filepath in session.get('image_paths', []):
         if os.path.exists(filepath):
             os.remove(filepath)
-    SESSION[user_id] = {'mode': None, 'image_paths': [], 'files': []}
+    SESSION[user_id] = {'mode': None, 'image_paths': [], 'files': [], 'pages': '', 'size': (1280, 720)}
     bot.send_message(msg.chat.id, "❌ সব রিসেট ডান। আবার বাটন চাপো", reply_markup=main_keyboard())
 
 @bot.message_handler(func=lambda m: m.text == '🟥 ছবি→PDF')
@@ -167,7 +167,7 @@ def btn_prank(msg):
 
 @bot.message_handler(func=lambda m: m.text == '🟪 মোটিভেশন')
 def btn_quote(msg):
-    quotes = ["🟪 'লাইফ ইজ প্র্যাংক' 😂", "🟪 'হাসতে থাকো' 🔥", "🟪 'টেনশন নিও না' ✨"]
+    quotes = ["🟪 'লাইফ ইজ প্র্যাংক' 😂", "🟪 'হাসতে থাকো' 🔥", "🟪 'টেনশন নিও না' ✨", "🟪 'ঘুমাও বস' 😴"]
     bot.reply_to(msg, random.choice(quotes))
 
 @bot.message_handler(func=lambda m: m.text == '📊 এডমিন')
@@ -236,7 +236,7 @@ def handle_text(msg):
     if mode == 'weather':
         api_key = os.environ.get('WEATHER_KEY')
         if not api_key:
-            bot.reply_to(msg, "🟨 WEATHER_KEY অ্যাড করো Render এ")
+            bot.reply_to(msg, "🟨 WEATHER_KEY অ্যাড করো Railway এ")
             return
         try:
             r = requests.get(f"https://api.openweathermap.org/data/2.5/weather?q={text}&appid={api_key}&units=metric&lang=bn").json()
@@ -329,29 +329,48 @@ def handle_photo(msg):
     session = get_session(user_id)
     mode = session.get('mode')
 
-    if mode!= 'img2pdf_batch':
-        return
+    if mode == 'img2pdf_batch':
+        try:
+            file_info = bot.get_file(msg.photo[-1].file_id)
+            img_data = bot.download_file(file_info.file_path)
+            filename = f"{user_id}_{uuid.uuid4().hex}.jpg"
+            filepath = os.path.join(TEMP_DIR, filename)
+            with open(filepath, 'wb') as f:
+                f.write(img_data)
+            session['image_paths'].append(filepath)
+            bot.reply_to(msg, f"🟥 ছবি {len(session['image_paths'])} জমা ✅\nআর পাঠাও। শেষে /donepdf দাও")
+        except Exception as e:
+            bot.reply_to(msg, f"🟦 ছবি সেভ করতে সমস্যা: {e}")
 
-    print(f"DEBUG: Photo received. Mode={mode}, User={user_id}", flush=True)
+    elif mode == 'resize_wait_img':
+        try:
+            file_info = bot.get_file(msg.photo[-1].file_id)
+            img_data = bot.download_file(file_info.file_path)
+            img = Image.open(BytesIO(img_data))
+            w, h = session['size']
+            img_resized = img.resize((w, h), Image.LANCZOS)
+            output = BytesIO()
+            img_resized.save(output, format='JPEG', quality=95)
+            output.seek(0)
+            bot.send_photo(msg.chat.id, output, caption=f"🟦 {w}x{h} রিসাইজ ডান ✅")
+            session['mode'] = None
+        except Exception as e:
+            bot.reply_to(msg, f"🟦 রিসাইজ সমস্যা: {e}")
 
-    try:
-        file_info = bot.get_file(msg.photo[-1].file_id)
-        img_data = bot.download_file(file_info.file_path)
-
-        filename = f"{user_id}_{uuid.uuid4().hex}.jpg"
-        filepath = os.path.join(TEMP_DIR, filename)
-        with open(filepath, 'wb') as f:
-            f.write(img_data)
-
-        session['image_paths'].append(filepath)
-        count = len(session['image_paths'])
-
-        print(f"DEBUG: Saved image {count} to disk: {filename}", flush=True)
-        bot.reply_to(msg, f"🟥 ছবি {count} জমা ✅\nআর পাঠাও। শেষে /donepdf দাও")
-
-    except Exception as e:
-        print(f"ERROR: {traceback.format_exc()}", flush=True)
-        bot.reply_to(msg, f"🟦 ছবি সেভ করতে সমস্যা: {e}")
+    elif mode == 'enhance':
+        try:
+            file_info = bot.get_file(msg.photo[-1].file_id)
+            img_data = bot.download_file(file_info.file_path)
+            img = Image.open(BytesIO(img_data))
+            enhancer = ImageEnhance.Sharpness(img)
+            img_enhanced = enhancer.enhance(2.0)
+            output = BytesIO()
+            img_enhanced.save(output, format='JPEG', quality=95)
+            output.seek(0)
+            bot.send_photo(msg.chat.id, output, caption="🟦 HD এনহ্যান্স ডান ✅")
+            session['mode'] = None
+        except Exception as e:
+            bot.reply_to(msg, f"🟦 HD সমস্যা: {e}")
 
 @bot.message_handler(commands=['donemerge'])
 def done_merge(msg):
@@ -370,21 +389,17 @@ def done_merge(msg):
         merger.write(output)
         output.seek(0)
         output.name = "merged.pdf"
-        bot.send_document(msg.chat.id, output, caption="🟥 মার্জ কমপ্লিট ✅")
+        bot.send_document(msg.chat.id, output, caption=f"🟥 {len(session['files'])}টা PDF মার্জ কমপ্লিট ✅")
         session['files'] = []
         session['mode'] = None
     except Exception as e:
         bot.reply_to(msg, f"🟥 মার্জ করতে সমস্যা: {e}")
         session['mode'] = None
 
-# ======== v9 স্লিপ প্রুফ done_pdf =========
 @bot.message_handler(commands=['donepdf'])
 def done_pdf(msg):
     user_id = msg.from_user.id
     session = get_session(user_id)
-
-    print(f"DEBUG: /donepdf hit by {user_id}", flush=True)
-    print(f"DEBUG: Image count on disk={len(session.get('image_paths', []))}", flush=True)
 
     if len(session.get('image_paths', [])) < 1:
         bot.reply_to(msg, "🟥 ছবি 0টা জমা আছে। আগে '🟥 ছবি→PDF' চেপে ছবি পাঠাও")
@@ -394,41 +409,32 @@ def done_pdf(msg):
 
     try:
         images = []
-        for i, filepath in enumerate(session['image_paths']):
-            print(f"DEBUG: Loading image {i+1}/{len(session['image_paths'])}", flush=True)
+        for filepath in session['image_paths']:
             img = Image.open(filepath).convert('RGB')
-            max_size = 800 # RAM বাঁচানোর জন্য 800px
+            max_size = 800
             if img.width > max_size or img.height > max_size:
                 img.thumbnail((max_size, max_size), Image.LANCZOS)
             images.append(img)
 
-        first_img = images[0]
-        other_imgs = images[1:]
-
         pdf_bytes = BytesIO()
-        if other_imgs:
-            first_img.save(pdf_bytes, format='PDF', save_all=True, append_images=other_imgs, resolution=72.0, optimize=True)
+        if len(images) > 1:
+            images[0].save(pdf_bytes, format='PDF', save_all=True, append_images=images[1:], resolution=72.0, optimize=True)
         else:
-            first_img.save(pdf_bytes, format='PDF', resolution=72.0, optimize=True)
+            images[0].save(pdf_bytes, format='PDF', resolution=72.0, optimize=True)
 
         pdf_bytes.seek(0)
         pdf_bytes.name = "batch_images.pdf"
         size_mb = round(len(pdf_bytes.getvalue())/1024/1024, 2)
-
-        print(f"DEBUG: Sending PDF size={size_mb} MB", flush=True)
         bot.send_document(msg.chat.id, pdf_bytes, caption=f"🟥 {len(images)}টা ছবি→1টা PDF ডান ✅\nসাইজ: {size_mb} MB")
 
-        # ডিস্ক ক্লিন
         for filepath in session['image_paths']:
             if os.path.exists(filepath):
                 os.remove(filepath)
         session['image_paths'] = []
 
     except Exception as e:
-        error_detail = traceback.format_exc()
-        print(f"ERROR: {error_detail}", flush=True)
-        bot.reply_to(msg, f"🟥 এরর: {str(e)}\n\nRender Logs চেক করো 'DEBUG:' লাইন")
-        # এরর হলেও ডিস্ক ক্লিন
+        print(f"ERROR: {traceback.format_exc()}", flush=True)
+        bot.reply_to(msg, f"🟥 এরর: {str(e)}")
         for filepath in session.get('image_paths', []):
             if os.path.exists(filepath):
                 os.remove(filepath)
@@ -446,7 +452,15 @@ def webhook():
 
 if __name__ == '__main__':
     bot.remove_webhook()
-    webhook_url = os.environ.get('RENDER_EXTERNAL_URL') + '/webhook'
-    bot.set_webhook(url=webhook_url)
-    port = int(os.environ.get('PORT', 10000))
+
+    # Railway এর জন্য ফিক্স
+    domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+    if domain:
+        webhook_url = f"https://{domain}/webhook"
+        bot.set_webhook(url=webhook_url)
+        print(f"Webhook set: {webhook_url}", flush=True)
+    else:
+        print("RAILWAY_PUBLIC_DOMAIN নাই", flush=True)
+
+    port = int(os.environ.get('PORT', 3000))
     app.run(host='0.0.0.0', port=port)
