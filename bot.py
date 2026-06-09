@@ -19,15 +19,15 @@ bot = telebot.TeleBot(TOKEN)
 app = Flask(__name__)
 
 USER_FILE = 'users.json'
-TEMP_DIR = '/tmp/bot_images' # Render এর টেম্প ফোল্ডার
+TEMP_DIR = '/tmp/bot_images'
 os.makedirs(TEMP_DIR, exist_ok=True)
 
 SESSION = {}
 
 def get_session(user_id):
     if user_id not in SESSION:
-        SESSION[user_id] = {'mode': None, 'image_paths': [], 'files': []} # images না, image_paths
-        print(f"DEBUG: New session created for {user_id}")
+        SESSION[user_id] = {'mode': None, 'image_paths': [], 'files': []}
+        print(f"DEBUG: New session created for {user_id}", flush=True)
     return SESSION[user_id]
 
 def load_users():
@@ -85,7 +85,6 @@ def start(msg):
 def cancel_mode(msg):
     user_id = msg.from_user.id
     session = get_session(user_id)
-    # ডিস্কের ফাইল ডিলিট
     for filepath in session.get('image_paths', []):
         if os.path.exists(filepath):
             os.remove(filepath)
@@ -99,7 +98,6 @@ def btn_img2pdf(msg):
     session['image_paths'] = []
     bot.reply_to(msg, "🟥 ব্যাচ মোড অন ✅\nযত খুশি ছবি পাঠাও। শেষে /donepdf দাও")
 
-# বাকি সব বাটন সেম আগের মতো...
 @bot.message_handler(func=lambda m: m.text == '🟥 PDF মার্জ')
 def btn_pdfmerge(msg):
     session = get_session(msg.from_user.id)
@@ -334,13 +332,12 @@ def handle_photo(msg):
     if mode!= 'img2pdf_batch':
         return
 
-    print(f"DEBUG: Photo received. Mode={mode}, User={user_id}")
+    print(f"DEBUG: Photo received. Mode={mode}, User={user_id}", flush=True)
 
     try:
         file_info = bot.get_file(msg.photo[-1].file_id)
         img_data = bot.download_file(file_info.file_path)
 
-        # ডিস্কে সেভ করো - RAM বাঁচবে
         filename = f"{user_id}_{uuid.uuid4().hex}.jpg"
         filepath = os.path.join(TEMP_DIR, filename)
         with open(filepath, 'wb') as f:
@@ -349,11 +346,11 @@ def handle_photo(msg):
         session['image_paths'].append(filepath)
         count = len(session['image_paths'])
 
-        print(f"DEBUG: Saved image {count} to disk: {filename}")
+        print(f"DEBUG: Saved image {count} to disk: {filename}", flush=True)
         bot.reply_to(msg, f"🟥 ছবি {count} জমা ✅\nআর পাঠাও। শেষে /donepdf দাও")
 
     except Exception as e:
-        print(f"ERROR: {traceback.format_exc()}")
+        print(f"ERROR: {traceback.format_exc()}", flush=True)
         bot.reply_to(msg, f"🟦 ছবি সেভ করতে সমস্যা: {e}")
 
 @bot.message_handler(commands=['donemerge'])
@@ -380,33 +377,30 @@ def done_merge(msg):
         bot.reply_to(msg, f"🟥 মার্জ করতে সমস্যা: {e}")
         session['mode'] = None
 
+# ======== v9 স্লিপ প্রুফ done_pdf =========
 @bot.message_handler(commands=['donepdf'])
 def done_pdf(msg):
     user_id = msg.from_user.id
     session = get_session(user_id)
 
-    print(f"DEBUG: /donepdf called. Images on disk={len(session.get('image_paths', []))}")
-
-    if session.get('mode')!= 'img2pdf_batch':
-        bot.reply_to(msg, "🟥 আগে '🟥 ছবি→PDF' বাটন চাপো ভাই")
-        return
+    print(f"DEBUG: /donepdf hit by {user_id}", flush=True)
+    print(f"DEBUG: Image count on disk={len(session.get('image_paths', []))}", flush=True)
 
     if len(session.get('image_paths', [])) < 1:
-        bot.reply_to(msg, "🟥 ছবি 0টা জমা আছে")
+        bot.reply_to(msg, "🟥 ছবি 0টা জমা আছে। আগে '🟥 ছবি→PDF' চেপে ছবি পাঠাও")
         return
 
-    bot.reply_to(msg, f"🟥 {len(session['image_paths'])}টা ছবি প্রসেস করতেছি... 20-30 সেকেন্ড ⏳")
+    bot.reply_to(msg, f"🟥 {len(session['image_paths'])}টা ছবি প্রসেস করতেছি... 30 সেকেন্ড ⏳")
 
     try:
         images = []
-        # ডিস্ক থেকে একটা একটা করে লোড
         for i, filepath in enumerate(session['image_paths']):
+            print(f"DEBUG: Loading image {i+1}/{len(session['image_paths'])}", flush=True)
             img = Image.open(filepath).convert('RGB')
-            max_size = 1000 # 1200 থেকে কমায় 1000 করলাম
+            max_size = 800 # RAM বাঁচানোর জন্য 800px
             if img.width > max_size or img.height > max_size:
                 img.thumbnail((max_size, max_size), Image.LANCZOS)
             images.append(img)
-            print(f"DEBUG: Loaded image {i+1}/{len(session['image_paths'])} from disk")
 
         first_img = images[0]
         other_imgs = images[1:]
@@ -421,7 +415,7 @@ def done_pdf(msg):
         pdf_bytes.name = "batch_images.pdf"
         size_mb = round(len(pdf_bytes.getvalue())/1024/1024, 2)
 
-        print(f"DEBUG: PDF created. Size={size_mb} MB")
+        print(f"DEBUG: Sending PDF size={size_mb} MB", flush=True)
         bot.send_document(msg.chat.id, pdf_bytes, caption=f"🟥 {len(images)}টা ছবি→1টা PDF ডান ✅\nসাইজ: {size_mb} MB")
 
         # ডিস্ক ক্লিন
@@ -429,13 +423,16 @@ def done_pdf(msg):
             if os.path.exists(filepath):
                 os.remove(filepath)
         session['image_paths'] = []
-        session['mode'] = None
 
     except Exception as e:
         error_detail = traceback.format_exc()
-        print(error_detail)
+        print(f"ERROR: {error_detail}", flush=True)
         bot.reply_to(msg, f"🟥 এরর: {str(e)}\n\nRender Logs চেক করো 'DEBUG:' লাইন")
-        session['mode'] = None
+        # এরর হলেও ডিস্ক ক্লিন
+        for filepath in session.get('image_paths', []):
+            if os.path.exists(filepath):
+                os.remove(filepath)
+        session['image_paths'] = []
 
 @app.route('/')
 def home():
