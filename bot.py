@@ -2,9 +2,13 @@ import os
 import random
 import datetime
 import asyncio
-from flask import Flask, request
+import nest_asyncio
+nest_asyncio.apply()
+import json
+
 import telebot
 from telebot import types
+from flask import Flask, request
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 import requests
@@ -13,6 +17,7 @@ from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.utils import simpleSplit
 import edge_tts
 
 app = Flask(__name__)
@@ -22,12 +27,35 @@ RENDER_URL = os.environ.get('RENDER_URL')
 
 bot = telebot.TeleBot(BOT_TOKEN)
 user_state = {}
-# Vocabulary লোড করার কোড
-import random
 
+# ========== ইউজার ডাটাবেস + নোটিফিকেশন ==========
+ADMIN_ID = 1692907487 # <-- তোমার Telegram ID বসাও এখানে
+
+DB_FILE = "/tmp/user_db.json"
+user_db = {}
+
+def load_users():
+    global user_db
+    if os.path.exists(DB_FILE):
+        with open(DB_FILE, 'r') as f:
+            user_db = json.load(f)
+
+def save_users():
+    with open(DB_FILE, 'w') as f:
+        json.dump(user_db, f)
+
+load_users()
+
+def notify_admin(text):
+    try:
+        bot.send_message(ADMIN_ID, text, parse_mode="Markdown")
+    except:
+        pass
+# ==============================================
+
+# Vocabulary লোড
 vocab_list = []
 file_path = os.path.join(os.path.dirname(__file__), 'vocab.txt')
-
 try:
     with open(file_path, 'r', encoding='utf-8') as f:
         for line in f:
@@ -39,14 +67,11 @@ try:
     print(f"Vocab লোড হইছে: {len(vocab_list)} টা ওয়ার্ড")
 except Exception as e:
     print(f"vocab.txt এরর: {e}")
-# ফন্ট ফিক্সড ভার্সন - বাংলা + ইংলিশ দুইটাই সাপোর্ট করে
-# ইংলিশ ফন্ট রেজিস্টার
-pdfmetrics.registerFont(TTFont('DejaVu', 'DejaVuSans.ttf'))
+
+# Font download
 def download_font():
     font_path = "/tmp/NotoSansBengali.ttf"
-    if os.path.exists(font_path) and os.path.getsize(font_path) < 100000:
-        os.remove(font_path)
-    if not os.path.exists(font_path):
+    if not os.path.exists(font_path) or os.path.getsize(font_path) < 100000:
         url = "https://github.com/googlefonts/noto-fonts/raw/main/hinted/ttf/NotoSansBengali/NotoSansBengali-Regular.ttf"
         r = requests.get(url, timeout=20)
         if r.status_code == 200:
@@ -55,6 +80,8 @@ def download_font():
     return font_path
 
 FONT_PATH = download_font()
+pdfmetrics.registerFont(TTFont('DejaVu', 'DejaVuSans.ttf'))
+pdfmetrics.registerFont(TTFont('Bengali', FONT_PATH))
 
 tools = {
     'fun': "🎭 Fun Zone",
@@ -78,7 +105,7 @@ tools = {
 
 @app.route('/', methods=['GET'])
 def home():
-    return "Shanu's Magic Bot v6 - 17 Tools 🔥"
+    return "Shanu's Magic Bot v6.2 - 17 Tools + Stats 🔥"
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -87,25 +114,68 @@ def webhook():
     bot.process_new_updates([update])
     return "ok", 200
 
+def cancel_prev(chat_id):
+    if user_state.get(chat_id):
+        user_state[chat_id] = None
+        bot.send_message(chat_id, "ক্যান্সেল হলো ✅")
+
 @bot.message_handler(commands=['start'])
 def start(message):
-    user_state[message.chat.id] = None
+    user_id = str(message.chat.id)
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    month = datetime.datetime.now().strftime("%Y-%m")
+
+    is_new = False
+    # নতুন ইউজার হলে সেভ + এডমিনকে নোটিফাই
+    if user_id not in user_db:
+        is_new = True
+        user_db[user_id] = {
+            "first_seen": today,
+            "last_seen": today,
+            "month": month,
+            "username": message.from_user.username or message.from_user.first_name
+        }
+        notify_admin(f"🎉 **নতুন ইউজার জয়েন করছে!**\n\nID: `{user_id}`\nনাম: {user_db[user_id]['username']}\nমোট ইউজার: {len(user_db)} জন")
+    else:
+        user_db[user_id]["last_seen"] = today
+        user_db[user_id]["month"] = month
+
+    save_users()
+
+    cancel_prev(message.chat.id)
     markup = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
-    markup.add(*[types.KeyboardButton(btn) for btn in tools.values()])
-    bot.send_message(message.chat.id,
-                     "🔥 **Shanu's Magic Bot v6**\n\n"
-                     "17টা ভাইরাল টুল রেডি। সব ফ্রি + ফাস্ট\n"
-                     "`/cancel` দিয়ে বাতিল করো",
-                     reply_markup=markup, parse_mode="Markdown")
+    markup.add(*[types.KeyboardButton(v) for v in tools.values()])
+    welcome = "🔥 **Shanu's Magic Bot v6.2**\n17টা টুল রেডি। সব ফ্রি + ফাস্ট\n`/cancel` দিয়ে বাতিল করো\n`/stats` দিলে বটের স্ট্যাটস দেখতে পারবা" if message.chat.id == ADMIN_ID else "🔥 **Shanu's Magic Bot v6.2**\n17টা টুল রেডি। সব ফ্রি + ফাস্ট\n`/cancel` দিয়ে বাতিল করো"
+    bot.send_message(message.chat.id, welcome, reply_markup=markup, parse_mode="Markdown")
 
 @bot.message_handler(commands=['cancel'])
 def cancel(message):
     cancel_prev(message.chat.id)
 
-def cancel_prev(chat_id):
-    if user_state.get(chat_id):
-        user_state[chat_id] = None
-        bot.send_message(chat_id, "ক্যান্সেল হলো ✅")
+# ========== Admin Stats Command ==========
+@bot.message_handler(commands=['stats'])
+def stats(message):
+    if message.chat.id!= ADMIN_ID:
+        bot.send_message(message.chat.id, "❌ তোমার পারমিশন নাই ভাই")
+        return
+
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    month = datetime.datetime.now().strftime("%Y-%m")
+
+    total_users = len(user_db)
+    today_users = len([u for u in user_db.values() if u.get("last_seen") == today])
+    month_users = len([u for u in user_db.values() if u.get("month") == month])
+
+    text = f"""📊 **বট স্ট্যাটস**
+
+👥 মোট ইউজার: {total_users} জন
+📅 আজকে একটিভ: {today_users} জন
+🗓️ এই মাসে: {month_users} জন
+
+🚀 বট তো ভাইরাল হয়ে যাইতেছে!"""
+
+    bot.send_message(message.chat.id, text, parse_mode="Markdown")
+# ========================================
 
 # 1. Fun Zone
 @bot.message_handler(func=lambda m: m.text == "🎭 Fun Zone")
@@ -130,31 +200,24 @@ def fun_handler(message):
         bot.send_message(message.chat.id, random.choice(facts))
     elif 'ব্যাক' in txt:
         start(message)
+        return
     user_state[message.chat.id] = None
 
-# 2. # 2. Text → PDF - English + Bangla সাপোর্টেড
+# 2. Text → PDF
 @bot.message_handler(func=lambda m: m.text == "📝 টেক্সট → PDF")
 def txt_pdf_start(message):
     cancel_prev(message.chat.id)
     user_state[message.chat.id] = 'txt_pdf'
     bot.send_message(message.chat.id, "📝 PDF এ যেটা লিখতে চাও সেটা পাঠাও\nবাংলা + ইংলিশ দুইটাই লিখতে পারবা")
 
-from reportlab.lib.utils import simpleSplit
-
-FONT_PATH = download_font()
-
 @bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'txt_pdf')
 def txt_pdf_process(message):
     try:
-        # DejaVuSans.ttf এর বদলে FONT_PATH ইউজ করো
-        pdfmetrics.registerFont(TTFont('Bengali', FONT_PATH))
         c = canvas.Canvas("/tmp/text.pdf", pagesize=A4)
         width, height = A4
         c.setFont('Bengali', 14)
-        
         y = height - 50
         max_width = width - 100
-        
         for line in message.text.split('\n'):
             wrapped_lines = simpleSplit(line, 'Bengali', 14, max_width)
             for wrapped in wrapped_lines:
@@ -164,16 +227,13 @@ def txt_pdf_process(message):
                     c.showPage()
                     c.setFont('Bengali', 14)
                     y = height - 50
-        
-        c.setPageCompression(0)
         c.save()
-        
         with open('/tmp/text.pdf', 'rb') as f:
             bot.send_document(message.chat.id, f, caption="✅ PDF রেডি!")
         user_state[message.chat.id] = None
-        
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
+
 # 3. Image → PDF
 @bot.message_handler(func=lambda m: m.text == "📄 ছবি → PDF")
 def pdf_start(message):
@@ -450,50 +510,4 @@ def bright_process(message):
         buf = BytesIO()
         img.save(buf, format='PNG')
         buf.seek(0)
-        bot.send_photo(message.chat.id, buf, caption="✅ ব্রাইটনেস বাড়ানো হলো!")
-        user_state[message.chat.id] = None
-    except Exception as e:
-        bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
-
-# 16. BD Female Voice TTS
-@bot.message_handler(func=lambda m: m.text == "🎤 BD Female Voice")
-def female_voice_start(message):
-    cancel_prev(message.chat.id)
-    user_state[message.chat.id] = 'female_tts'
-    bot.send_message(message.chat.id, "🎤 টেক্সট লিখো, বাংলাদেশী ফিমেল ভয়েসে বলবো")
-
-@bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'female_tts')
-def female_voice_process(message):
-    try:
-        async def tts():
-            communicate = edge_tts.Communicate(message.text, "bn-BD-NadiaNeural")
-            await communicate.save("/tmp/female.mp3")
-        asyncio.run(tts())
-        with open("/tmp/female.mp3", "rb") as f:
-            bot.send_audio(message.chat.id, f, caption="✅ BD Female Voice রেডি!")
-        user_state[message.chat.id] = None
-    except Exception as e:
-        bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
-
-# 17. BD Male Voice TTS
-@bot.message_handler(func=lambda m: m.text == "🎤 BD Male Voice")
-def male_voice_start(message):
-    cancel_prev(message.chat.id)
-    user_state[message.chat.id] = 'male_tts'
-    bot.send_message(message.chat.id, "🎤 টেক্সট লিখো, বাংলাদেশী মেল ভয়েসে বলবো")
-
-@bot.message_handler(func=lambda m: user_state.get(m.chat.id) == 'male_tts')
-def male_voice_process(message):
-    try:
-        async def tts():
-            communicate = edge_tts.Communicate(message.text, "bn-BD-PradeepNeural")
-            await communicate.save("/tmp/male.mp3")
-        asyncio.run(tts())
-        with open("/tmp/male.mp3", "rb") as f:
-            bot.send_audio(message.chat.id, f, caption="✅ BD Male Voice রেডি!")
-        user_state[message.chat.id] = None
-    except Exception as e:
-        bot.send_message(message.chat.id, f"❌ এরর: {str(e)}")
-
-@bot.message_handler(func=lambda m: True)
-def default_han
+        bot.send_photo(message.chat.id, buf, caption="✅ ব্রাইটনেস বাড়া
