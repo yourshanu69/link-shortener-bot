@@ -9,7 +9,6 @@ from flask import Flask, request
 from PIL import Image, ImageEnhance, ImageDraw
 from io import BytesIO
 import requests
-from PyPDF2 import PdfReader, PdfWriter
 from gtts import gTTS
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
