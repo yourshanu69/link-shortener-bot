@@ -11,6 +11,7 @@ from io import BytesIO
 import requests
 from gtts import gTTS
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+from pypdf import PdfReader, PdfWriter # PDF merge/split/compress er jonno
 
 TOKEN = os.environ.get('BOT_TOKEN')
 ADMIN_ID = int(os.environ.get('ADMIN_ID', '0'))
@@ -26,7 +27,6 @@ SESSION = {}
 def get_session(user_id):
     if user_id not in SESSION:
         SESSION[user_id] = {'mode': None, 'image_paths': [], 'files': [], 'pages': '', 'size': (1280, 720)}
-        print(f"DEBUG: New session created for {user_id}", flush=True)
     return SESSION[user_id]
 
 def load_users():
@@ -56,7 +56,7 @@ def main_keyboard():
         KeyboardButton('🟥 PDF মার্জ'),
         KeyboardButton('🟥 PDF ভাগ'),
         KeyboardButton('🟥 PDF ছোট করো'),
-        KeyboardButton('🟥 টেক্সট→PDF'),
+        # KeyboardButton('🟥 টেক্সট→PDF'), <-- Eita bad dilam
         KeyboardButton('🟥 ছবি→PDF'),
         KeyboardButton('🟦 রিসাইজ ছবি'),
         KeyboardButton('🟦 HD করো'),
@@ -116,11 +116,8 @@ def btn_pdfcompress(msg):
     session['mode'] = 'compress'
     bot.reply_to(msg, "🟥 PDF পাঠাও। ক্যাপশনে `compress` লিখে দাও ✅")
 
-@bot.message_handler(func=lambda m: m.text == '🟥 টেক্সট→PDF')
-def btn_text2pdf(msg):
-    session = get_session(msg.from_user.id)
-    session['mode'] = 'text2pdf'
-    bot.reply_to(msg, "🟥 লেখা পাঠাও। আমি সাথে PDF বানায় দিবো ✅")
+# @bot.message_handler(func=lambda m: m.text == '🟥 টেক্সট→PDF') <-- Eita bad
+# def btn_text2pdf(msg):... <-- Eitao bad
 
 @bot.message_handler(func=lambda m: m.text == '🟦 রিসাইজ ছবি')
 def btn_resize(msg):
@@ -199,23 +196,8 @@ def handle_text(msg):
         bot.reply_to(msg, f"🟥 পেইজ {text} সেট। এখন PDF পাঠাও ✅")
         return
 
-    if mode == 'text2pdf':
-        try:
-            img = Image.new('RGB', (595, 842), 'white')
-            draw = ImageDraw.Draw(img)
-            y = 50
-            for line in text.split('\n')[:35]:
-                draw.text((50, y), line, fill='black')
-                y += 22
-            pdf_bytes = BytesIO()
-            img.save(pdf_bytes, format='PDF', save_all=True)
-            pdf_bytes.seek(0)
-            pdf_bytes.name = "text.pdf"
-            bot.send_document(msg.chat.id, pdf_bytes, caption="🟥 টেক্সট→PDF ডান ✅")
-        except Exception as e:
-            bot.reply_to(msg, f"🟥 PDF বানাতে সমস্যা: {e}")
-        session['mode'] = None
-        return
+    # if mode == 'text2pdf': <-- Eita bad
+    #... <-- Eitao bad
 
     if mode == 'qr':
         url = f"https://api.qrserver.com/v1/create-qr-code/?size=400x400&data={text}"
@@ -451,8 +433,6 @@ def webhook():
 
 if __name__ == '__main__':
     bot.remove_webhook()
-
-    # Railway এর জন্য ফিক্স
     domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
     if domain:
         webhook_url = f"https://{domain}/webhook"
